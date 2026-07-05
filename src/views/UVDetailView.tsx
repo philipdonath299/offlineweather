@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Navigation, Cloud } from 'lucide-react';
+import { ArrowLeft, Navigation } from 'lucide-react';
 import { getWeatherDescription } from '../utils/weatherCodes';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 // En egen animerad siffra-komponent som använder requestAnimationFrame för 60fps uppdateringar
 function AnimatedNumber({ value }: { value: number }) {
@@ -15,13 +16,12 @@ function AnimatedNumber({ value }: { value: number }) {
     startValueRef.current = displayValue;
     startTimeRef.current = performance.now();
     
-    const duration = 400; // ms animation för peek
+    const duration = 400; // ms animation
 
     const animate = (time: number) => {
       if (!startTimeRef.current) return;
       const progress = Math.min((time - startTimeRef.current) / duration, 1);
       
-      // Easing: spring-liknande mjuk inbromsning (easeOutExpo)
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       
       const nextValue = startValueRef.current + (value - startValueRef.current) * easeProgress;
@@ -46,8 +46,7 @@ export default function UVDetailView() {
   const { data } = useWeatherContext();
   const navigate = useNavigate();
   const [isPeeking, setIsPeeking] = useState(false);
-  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
-  const graphRef = useRef<HTMLDivElement>(null);
+  const [activeItem, setActiveItem] = useState<{ time: string, uv: number } | null>(null);
 
   if (!data) return null;
 
@@ -62,16 +61,21 @@ export default function UVDetailView() {
   
   const peakUvItem = [...todaysData].sort((a, b) => b.uv - a.uv)[0];
   const maxUv = peakUvItem?.uv || 0;
-  const peakIndex = todaysData.findIndex(item => item.time === peakUvItem?.time);
-  const peakTime = new Date(peakUvItem?.time || '').getHours().toString().padStart(2, '0') + ':00';
+  
+  const chartData = todaysData.map(item => ({
+    time: new Date(item.time).getHours().toString().padStart(2, '0') + ':00',
+    uv: item.uv,
+    rawTime: item.time
+  }));
 
-  // Aktuell tid (endast timme för enklare matchning på kurvan)
-  const currentHour = new Date().getHours();
+  const nowHourStr = new Date().getHours().toString().padStart(2, '0') + ':00';
   
   // Värde att visa (aktuellt vs peak vs skrubbning)
-  const displayUv = isPeeking ? maxUv : (scrubIndex !== null ? todaysData[scrubIndex].uv : currentUv);
+  const isScrubbing = activeItem !== null;
+  const displayUv = isPeeking ? maxUv : (isScrubbing && activeItem ? activeItem.uv : currentUv);
+  const displayTime = isPeeking ? 'Peak UV' : (isScrubbing && activeItem ? activeItem.time : 'Aktuellt UV');
 
-  // Rubriken översatt tillbaka till svenska för enhetlighet
+  // Rubriken översatt tillbaka till svenska
   let headerTitle = 'LÅG';
   if (currentUv >= 3) headerTitle = 'MÅTTLIG';
   if (currentUv >= 6) headerTitle = 'HÖG';
@@ -81,83 +85,24 @@ export default function UVDetailView() {
 
   const weatherDesc = getWeatherDescription(data.current.weatherCode);
 
-  // För kurvan: bygger en egen SVG-kurva för att ha full kontroll över utseendet.
-  // Vi mappar 24 timmar till en bredd på 100% (använder viewBox 0 0 400 120).
-  const graphWidth = 400;
-  const graphHeight = 120;
-  const maxUvInGraph = Math.max(11, maxUv + 1); // Skala så att kurvan får plats
-  
-  // Skapa en path för arean och linjen
-  const points = todaysData.map((item, i) => {
-    const x = (i / 23) * graphWidth;
-    const y = graphHeight - (item.uv / maxUvInGraph) * graphHeight;
-    return `${x},${y}`;
-  });
-  
-  // Enkel spline/smooth line
-  const linePath = points.length > 0 
-    ? `M ${points[0]} ` + points.slice(1).map((p) => {
-        return `L ${p}`;
-      }).join(' ')
-    : '';
-    
-  const areaPath = linePath ? `${linePath} L ${graphWidth},${graphHeight} L 0,${graphHeight} Z` : '';
-
-  // Soluppgång / nedgång markeringar
-  const sunriseHour = new Date(data.daily.sunrise[0]).getHours();
-  const sunsetHour = new Date(data.daily.sunset[0]).getHours();
-  
-  const sunriseX = (sunriseHour / 23) * graphWidth;
-  const sunsetX = (sunsetHour / 23) * graphWidth;
-  const currentY = graphHeight - (currentUv / maxUvInGraph) * graphHeight;
-
   // Animation handlers (Dial Peek)
   const handlePointerDownDial = () => setIsPeeking(true);
   const handlePointerUpDial = () => setIsPeeking(false);
 
-  // Graph Scrubbing handlers
-  const updateScrub = (clientX: number) => {
-    if (!graphRef.current) return;
-    const rect = graphRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / rect.width));
-    const index = Math.round(percentage * 23);
-    setScrubIndex(index);
-  };
-
-  const handleGraphPointerDown = (e: React.PointerEvent) => {
-    if (!graphRef.current) return;
-    graphRef.current.setPointerCapture(e.pointerId);
-    updateScrub(e.clientX);
-  };
-
-  const handleGraphPointerMove = (e: React.PointerEvent) => {
-    if (e.buttons > 0) {
-      updateScrub(e.clientX);
+  // Recharts handlers
+  const handleChartInteraction = (state: any) => {
+    if (state && state.activePayload && state.activePayload.length > 0) {
+      setActiveItem({
+        time: state.activePayload[0].payload.time,
+        uv: state.activePayload[0].payload.uv
+      });
+      setIsPeeking(false);
     }
   };
 
-  const handleGraphPointerUp = (e: React.PointerEvent) => {
-    if (!graphRef.current) return;
-    graphRef.current.releasePointerCapture(e.pointerId);
-    setScrubIndex(null);
+  const handleReset = () => {
+    setActiveItem(null);
   };
-
-  // Bestäm position och text för informationsbubblan (över kurvan)
-  const showBubble = isPeeking || scrubIndex !== null;
-  let bubbleIndex = peakIndex;
-  let bubbleUv = maxUv;
-  let bubbleTime = peakTime;
-
-  if (scrubIndex !== null && !isPeeking) {
-    bubbleIndex = scrubIndex;
-    bubbleUv = todaysData[scrubIndex].uv;
-    bubbleTime = new Date(todaysData[scrubIndex].time).getHours().toString().padStart(2, '0') + ':00';
-  }
-
-  const bubbleLeftPercent = (bubbleIndex / 23) * 100;
-  const scrubDotX = (bubbleIndex / 23) * graphWidth;
-  const scrubDotY = graphHeight - (bubbleUv / maxUvInGraph) * graphHeight;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '40px', minHeight: '100vh', backgroundColor: '#000000', userSelect: 'none', WebkitUserSelect: 'none' }}>
@@ -168,8 +113,8 @@ export default function UVDetailView() {
         </button>
       </div>
 
-      {/* 1-3. Rubrik, Beskrivning, Plats */}
-      <div className="flex-col flex-center" style={{ textAlign: 'center', marginTop: '10px', gap: '6px', position: 'relative', zIndex: 10 }}>
+      {/* Rubrik, Beskrivning, Plats */}
+      <div className="flex-col flex-center" style={{ textAlign: 'center', marginTop: '10px', gap: '6px' }}>
         <h1 style={{ fontSize: '42px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1' }}>
           {headerTitle}
         </h1>
@@ -182,112 +127,62 @@ export default function UVDetailView() {
         </div>
       </div>
 
-      {/* 4. UV-Kurvan (Custom SVG) med Scrubber */}
-      <div 
-        ref={graphRef}
-        onPointerDown={handleGraphPointerDown}
-        onPointerMove={handleGraphPointerMove}
-        onPointerUp={handleGraphPointerUp}
-        onPointerLeave={handleGraphPointerUp}
-        style={{ 
-          width: '100%', 
-          height: '140px', 
-          position: 'relative', 
-          marginTop: '40px',
-          touchAction: 'none', // Förhindra scroll när man skrubbar grafen
-          cursor: 'ew-resize'
-        }}
-      >
+      {/* Graf med Recharts precis som på övriga detaljsidor */}
+      <div style={{ width: '100%', height: '180px', marginTop: '40px', padding: '0 16px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart 
+            data={chartData} 
+            margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
+            onMouseMove={handleChartInteraction}
+            onMouseLeave={handleReset}
+          >
+            <defs>
+              <linearGradient id="uvGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8e8e93" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#8e8e93" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="time" hide />
+            
+            {/* Markör för Nuvarande Tid */}
+            <ReferenceLine x={nowHourStr} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />
+            
+            {/* Markör för Skrubbing */}
+            {isScrubbing && activeItem && (
+              <ReferenceLine x={activeItem.time} stroke="#ffffff" strokeWidth={2} />
+            )}
+
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#000000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px' }}
+              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+              labelStyle={{ color: '#8e8e93', marginBottom: '4px' }}
+              cursor={false}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="uv" 
+              stroke="#ffffff" 
+              strokeWidth={3} 
+              fillOpacity={1} 
+              fill="url(#uvGradient)" 
+              animationDuration={500}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
         
-        {/* Peek / Scrub Bubbla över grafen */}
-        <div style={{
-          position: 'absolute',
-          top: '-30px',
-          left: `${bubbleLeftPercent}%`,
-          transform: `translateX(-50%) scale(${showBubble ? 1 : 0.8})`,
-          opacity: showBubble ? 1 : 0,
-          backgroundColor: 'rgba(50, 50, 50, 0.9)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          borderRadius: '20px',
-          padding: '8px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          transition: 'opacity 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-          zIndex: 20,
-          pointerEvents: 'none'
-        }}>
-          <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '16px' }}>UV {bubbleUv.toFixed(1)}</span>
-          <span style={{ color: '#ffffff', opacity: 0.8, fontSize: '14px' }}>{bubbleTime}</span>
+        <div className="flex-between text-muted text-xs" style={{ marginTop: '8px', padding: '0 8px' }}>
+          <span>{new Date(data.daily.sunrise[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+          <span>{new Date(data.daily.sunset[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
         </div>
-
-        <svg width="100%" height="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.15} />
-              <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-
-          {/* Area Fill */}
-          <path d={areaPath} fill="url(#areaGradient)" />
-
-          {/* Curve Line */}
-          <path d={linePath} fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* Baseline */}
-          <line x1="0" y1={graphHeight} x2={graphWidth} y2={graphHeight} stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
-          
-          {/* Markör för scrubbing (ritad som en prick på kurvan) */}
-          {showBubble && (
-            <circle cx={scrubDotX} cy={scrubDotY} r="6" fill="#ffffff" />
-          )}
-
-          {/* Ticks & Labels */}
-          {/* Sunrise */}
-          <line x1={sunriseX} y1={graphHeight - 4} x2={sunriseX} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
-          <text x={sunriseX} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
-             {new Date(data.daily.sunrise[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-          </text>
-
-          {/* Peak / Middle (approx) */}
-          <line x1={graphWidth/2} y1={graphHeight - 4} x2={graphWidth/2} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
-          <text x={graphWidth/2} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
-             12:00
-          </text>
-
-          {/* Sunset */}
-          <line x1={sunsetX} y1={graphHeight - 4} x2={sunsetX} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
-          <text x={sunsetX} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
-             {new Date(data.daily.sunset[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-          </text>
-        </svg>
-
-        {/* Current Time Icon overlay (Cloud/Sun) - göm den om vi skrubbar över den */}
-        {!showBubble && (
-          <div style={{
-            position: 'absolute',
-            left: `${(currentHour / 23) * 100}%`,
-            top: `calc(${currentY}px - 14px)`,
-            transform: 'translateX(-50%)',
-            backgroundColor: '#000000',
-            borderRadius: '50%',
-            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-            padding: '2px',
-            pointerEvents: 'none'
-          }}>
-            <Cloud size={24} color="#ffffff" fill="#ffffff" />
-          </div>
-        )}
       </div>
 
-      {/* 5. UV-hjulet (Mekanisk Dial) */}
+      {/* UV-hjulet (Mekanisk Dial) */}
       <div 
         className="flex-center" 
         style={{ 
           position: 'relative', 
           flex: 1,
+          marginTop: '20px',
           cursor: 'pointer',
           WebkitTapHighlightColor: 'transparent',
           touchAction: 'none' // Förhindra scroll när vi håller in
@@ -342,15 +237,15 @@ export default function UVDetailView() {
           <polygon points="160,55 180,55 170,42" fill="#ffffff" />
         </svg>
 
-        {/* 6. Mitteninformation (Fast) */}
+        {/* Mitteninformation (Fast) */}
         <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '0px', pointerEvents: 'none' }}>
-          <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking || scrubIndex !== null ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking || scrubIndex !== null ? 'auto' : '0', overflow: 'hidden' }}>
-            {isPeeking ? 'Peak UV' : `${bubbleTime}`}
+          <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking || isScrubbing ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking || isScrubbing ? 'auto' : '0', overflow: 'hidden' }}>
+            {displayTime}
           </span>
           <span className="font-bold" style={{ fontSize: '84px', color: '#ffffff', letterSpacing: '-3px', lineHeight: '1.1' }}>
             <AnimatedNumber value={displayUv} />
           </span>
-          <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking || scrubIndex !== null ? 0 : 1, transition: 'opacity 0.3s' }}>
+          <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking || isScrubbing ? 0 : 1, transition: 'opacity 0.3s' }}>
             Aktuellt UV
           </span>
         </div>
