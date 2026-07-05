@@ -10,6 +10,7 @@ import ForecastView from './views/ForecastView';
 import DetailsView from './views/DetailsView';
 import SettingsView from './views/SettingsView';
 import ParameterDetailView from './views/ParameterDetailView';
+import UVDetailView from './views/UVDetailView';
 
 function App() {
   const { data, loading, error, isOfflineData, refresh } = useWeatherContext();
@@ -68,6 +69,7 @@ function App() {
             <Route path="/forecast" element={<ForecastView />} />
             <Route path="/details" element={<DetailsView />} />
             <Route path="/settings" element={<SettingsView />} />
+            <Route path="/uv" element={<UVDetailView />} />
             <Route path="/param/:type" element={<ParameterDetailView />} />
           </Routes>
         </main>

@@ -13,7 +13,7 @@ export default function DetailsView() {
     { id: 'wind', title: 'Vind', icon: Wind, value: `${Math.round(data.current.windSpeed)} m/s` },
     { id: 'humidity', title: 'Luftfuktighet', icon: Droplets, value: `${data.current.humidity}%` },
     { id: 'pressure', title: 'Lufttryck', icon: Activity, value: `${Math.round(data.current.pressure)} hPa` },
-    { id: 'uv', title: 'UV-index', icon: SunDim, value: data.current.uvIndex },
+    { id: 'uv_custom', title: 'UV-index', icon: SunDim, value: data.current.uvIndex },
     { id: 'precipitation', title: 'Nederbörd', icon: CloudRain, value: `${data.current.precipitation} mm` },
     { id: 'visibility', title: 'Sikt', icon: Eye, value: `${(data.current.visibility / 1000).toFixed(1)} km` },
   ];
@@ -30,7 +30,7 @@ export default function DetailsView() {
               key={item.id} 
               className="surface-card flex-col" 
               style={{ alignItems: 'center', gap: '12px', padding: '32px 16px' }}
-              onClick={() => navigate(`/param/${item.id}`)}
+              onClick={() => navigate(item.id === 'uv_custom' ? '/uv' : `/param/${item.id}`)}
             >
               <Icon size={32} strokeWidth={1.5} className="text-muted" />
               <span className="text-md font-medium text-muted">{item.title}</span>

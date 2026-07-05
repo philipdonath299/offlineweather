@@ -29,7 +29,7 @@ export default function WeatherDetails({ data }: WeatherDetailsProps) {
       icon: Droplets,
     },
     {
-      id: 'uv',
+      id: 'uv_custom', // Ändrad för att vi plockar ut den
       title: 'UV-index',
       value: data.current.uvIndex,
       icon: SunDim,
@@ -57,7 +57,7 @@ export default function WeatherDetails({ data }: WeatherDetailsProps) {
             key={i} 
             className="btn-secondary flex-col" 
             style={{ alignItems: 'center', padding: '24px 16px', gap: '12px' }}
-            onClick={() => navigate(`/param/${item.id}`)}
+            onClick={() => navigate(item.id === 'uv_custom' ? '/uv' : `/param/${item.id}`)}
           >
             <Icon size={24} strokeWidth={1.5} className="text-muted" />
             <span className="text-md font-medium text-muted">{item.title}</span>
