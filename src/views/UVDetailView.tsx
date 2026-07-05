@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Navigation, Cloud } from 'lucide-react';
@@ -68,19 +68,6 @@ export default function UVDetailView() {
   // Värde att visa (aktuellt vs peak)
   const displayUv = isPeeking ? maxUv : currentUv;
 
-  let riskLevelCurrent = 'LÅG';
-  if (currentUv >= 3) riskLevelCurrent = 'MÅTTLIG';
-  if (currentUv >= 6) riskLevelCurrent = 'HÖG';
-  if (currentUv >= 8) riskLevelCurrent = 'MYCKET HÖG';
-  if (currentUv >= 11) riskLevelCurrent = 'EXTREM';
-  if (currentUv === 0) riskLevelCurrent = 'INGEN UV';
-
-  let riskLevelDisplay = 'LOW';
-  if (displayUv >= 3) riskLevelDisplay = 'MODERATE';
-  if (displayUv >= 6) riskLevelDisplay = 'HIGH';
-  if (displayUv >= 8) riskLevelDisplay = 'VERY HIGH';
-  if (displayUv >= 11) riskLevelDisplay = 'EXTREME';
-  if (displayUv === 0) riskLevelDisplay = 'NO UV';
 
   // Rubriken översatt tillbaka till svenska för enhetlighet (eller engelska om det var så i bilden)
   // Vi kör engelska i rubriken för att matcha bilden "NO UV" / "MODERATE" om så önskas, 
@@ -116,7 +103,7 @@ export default function UVDetailView() {
   
   // Enkel spline/smooth line (för detta räcker en polyline om vi har många punkter, men för mjukhet gör vi Bezier curves)
   const linePath = points.length > 0 
-    ? `M ${points[0]} ` + points.slice(1).map((p, i) => {
+    ? `M ${points[0]} ` + points.slice(1).map((p) => {
         // Enkel smoothing: dra linjer. (Vi har 24 punkter, det blir rätt mjukt)
         return `L ${p}`;
       }).join(' ')
@@ -130,7 +117,6 @@ export default function UVDetailView() {
   
   const sunriseX = (sunriseHour / 23) * graphWidth;
   const sunsetX = (sunsetHour / 23) * graphWidth;
-  const currentX = (currentHour / 23) * graphWidth;
   const currentY = graphHeight - (currentUv / maxUvInGraph) * graphHeight;
 
   // Animation handlers
