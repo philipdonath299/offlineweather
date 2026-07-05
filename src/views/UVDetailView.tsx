@@ -243,7 +243,7 @@ export default function UVDetailView() {
         <div className="surface-card flex-col" style={{ marginBottom: '16px' }}>
           <div className="section-header">UV Tidslinje Idag</div>
           <div className="list-item flex-between">
-            <span className="text-muted">Solen stiger (UV \> 0)</span>
+            <span className="text-muted">Solen stiger (UV &gt; 0)</span>
             <span className="font-semibold">{times.start || '-'}</span>
           </div>
           {times.moderate && (
