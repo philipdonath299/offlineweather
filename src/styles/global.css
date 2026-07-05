@@ -177,7 +177,7 @@ button {
   transform: translateX(-50%);
   width: 90%;
   max-width: 400px;
-  background-color: rgba(20, 20, 20, 0.85);
+  background-color: #000000;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
