@@ -81,9 +81,6 @@ export default function UVDetailView() {
 
   const weatherDesc = getWeatherDescription(data.current.weatherCode);
 
-  // SVG Gauge Beräkningar
-  const radius = 135; // Något större för att matcha referensen
-
   // För kurvan: bygger en egen SVG-kurva för att ha full kontroll över utseendet.
   // Vi mappar 24 timmar till en bredd på 100% (använder viewBox 0 0 400 120).
   const graphWidth = 400;
