@@ -1,16 +1,16 @@
-import CurrentWeather from '../components/CurrentWeather';
-import WeatherDetails from '../components/WeatherDetails';
+import HourlyForecast from '../components/HourlyForecast';
+import DailyForecast from '../components/DailyForecast';
 import { useWeatherContext } from '../context/WeatherContext';
 
-export default function HomeView() {
+export default function ForecastView() {
   const { data } = useWeatherContext();
 
   if (!data) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      <CurrentWeather data={data} />
-      <WeatherDetails data={data} />
+      <HourlyForecast data={data} />
+      <DailyForecast data={data} />
     </div>
   );
 }

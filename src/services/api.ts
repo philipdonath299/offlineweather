@@ -130,3 +130,15 @@ export async function searchLocation(query: string): Promise<LocationSearchResul
     admin1: r.admin1,
   }));
 }
+
+export async function reverseGeocode(lat: number, lon: number): Promise<string> {
+  try {
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=sv`);
+    if (!res.ok) return 'Okänd plats';
+    const data = await res.json();
+    return data.city || data.locality || data.principalSubdivision || 'Okänd plats';
+  } catch (e) {
+    return 'Okänd plats';
+  }
+}
+

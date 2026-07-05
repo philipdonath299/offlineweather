@@ -36,19 +36,21 @@ export function WeatherProvider({ children }: { children: ReactNode }) {
         if (savedLocationStr) {
           setLocationState(JSON.parse(savedLocationStr));
         } else if (settings.autoLocation && 'geolocation' in navigator) {
-          // Försök hämta GPS direkt om autolocation är på
           navigator.geolocation.getCurrentPosition(
-            (pos) => {
+            async (pos) => {
+              const { latitude, longitude } = pos.coords;
+              const { reverseGeocode } = await import('../services/api');
+              const cityName = await reverseGeocode(latitude, longitude);
+              
               setLocationState({
                 id: 0,
-                name: 'Nuvarande plats',
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
+                name: cityName,
+                latitude,
+                longitude,
                 country: '',
               });
             },
             () => {
-              // Fallback Stockholm
               setLocationState({ id: 2673730, name: 'Stockholm', latitude: 59.3294, longitude: 18.0687, country: 'Sverige' });
             }
           );

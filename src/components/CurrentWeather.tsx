@@ -10,7 +10,7 @@ export default function CurrentWeather({ data }: CurrentWeatherProps) {
 
   return (
     <div className="flex-col flex-center" style={{ margin: '40px 0 20px 0', gap: '12px' }}>
-      <h1 className="text-5xl font-bold">{data.location.name}</h1>
+      <h1 className="text-3xl font-bold">{data.location.name}</h1>
       <p className="text-md text-muted font-medium">
         {Math.round(data.current.temp)}° · {description}
       </p>
