@@ -34,7 +34,14 @@ export function WeatherProvider({ children }: { children: ReactNode }) {
 
         const savedLocationStr = localStorage.getItem('lastLocation');
         if (savedLocationStr) {
-          setLocationState(JSON.parse(savedLocationStr));
+          const parsedLoc = JSON.parse(savedLocationStr);
+          if (parsedLoc.name === 'Nuvarande plats') {
+            const { reverseGeocode } = await import('../services/api');
+            const cityName = await reverseGeocode(parsedLoc.latitude, parsedLoc.longitude);
+            parsedLoc.name = cityName;
+            localStorage.setItem('lastLocation', JSON.stringify(parsedLoc));
+          }
+          setLocationState(parsedLoc);
         } else if (settings.autoLocation && 'geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (pos) => {
