@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Navigation, Cloud } from 'lucide-react';
@@ -46,6 +46,8 @@ export default function UVDetailView() {
   const { data } = useWeatherContext();
   const navigate = useNavigate();
   const [isPeeking, setIsPeeking] = useState(false);
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
 
   if (!data) return null;
 
@@ -60,18 +62,16 @@ export default function UVDetailView() {
   
   const peakUvItem = [...todaysData].sort((a, b) => b.uv - a.uv)[0];
   const maxUv = peakUvItem?.uv || 0;
+  const peakIndex = todaysData.findIndex(item => item.time === peakUvItem?.time);
   const peakTime = new Date(peakUvItem?.time || '').getHours().toString().padStart(2, '0') + ':00';
 
   // Aktuell tid (endast timme för enklare matchning på kurvan)
   const currentHour = new Date().getHours();
   
-  // Värde att visa (aktuellt vs peak)
-  const displayUv = isPeeking ? maxUv : currentUv;
+  // Värde att visa (aktuellt vs peak vs skrubbning)
+  const displayUv = isPeeking ? maxUv : (scrubIndex !== null ? todaysData[scrubIndex].uv : currentUv);
 
-
-  // Rubriken översatt tillbaka till svenska för enhetlighet (eller engelska om det var så i bilden)
-  // Vi kör engelska i rubriken för att matcha bilden "NO UV" / "MODERATE" om så önskas, 
-  // men appen är på svenska. Vi använder svensk översättning av referensens rubriker.
+  // Rubriken översatt tillbaka till svenska för enhetlighet
   let headerTitle = 'LÅG';
   if (currentUv >= 3) headerTitle = 'MÅTTLIG';
   if (currentUv >= 6) headerTitle = 'HÖG';
@@ -94,10 +94,9 @@ export default function UVDetailView() {
     return `${x},${y}`;
   });
   
-  // Enkel spline/smooth line (för detta räcker en polyline om vi har många punkter, men för mjukhet gör vi Bezier curves)
+  // Enkel spline/smooth line
   const linePath = points.length > 0 
     ? `M ${points[0]} ` + points.slice(1).map((p) => {
-        // Enkel smoothing: dra linjer. (Vi har 24 punkter, det blir rätt mjukt)
         return `L ${p}`;
       }).join(' ')
     : '';
@@ -112,9 +111,53 @@ export default function UVDetailView() {
   const sunsetX = (sunsetHour / 23) * graphWidth;
   const currentY = graphHeight - (currentUv / maxUvInGraph) * graphHeight;
 
-  // Animation handlers
-  const handlePointerDown = () => setIsPeeking(true);
-  const handlePointerUp = () => setIsPeeking(false);
+  // Animation handlers (Dial Peek)
+  const handlePointerDownDial = () => setIsPeeking(true);
+  const handlePointerUpDial = () => setIsPeeking(false);
+
+  // Graph Scrubbing handlers
+  const updateScrub = (clientX: number) => {
+    if (!graphRef.current) return;
+    const rect = graphRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const index = Math.round(percentage * 23);
+    setScrubIndex(index);
+  };
+
+  const handleGraphPointerDown = (e: React.PointerEvent) => {
+    if (!graphRef.current) return;
+    graphRef.current.setPointerCapture(e.pointerId);
+    updateScrub(e.clientX);
+  };
+
+  const handleGraphPointerMove = (e: React.PointerEvent) => {
+    if (e.buttons > 0) {
+      updateScrub(e.clientX);
+    }
+  };
+
+  const handleGraphPointerUp = (e: React.PointerEvent) => {
+    if (!graphRef.current) return;
+    graphRef.current.releasePointerCapture(e.pointerId);
+    setScrubIndex(null);
+  };
+
+  // Bestäm position och text för informationsbubblan (över kurvan)
+  const showBubble = isPeeking || scrubIndex !== null;
+  let bubbleIndex = peakIndex;
+  let bubbleUv = maxUv;
+  let bubbleTime = peakTime;
+
+  if (scrubIndex !== null && !isPeeking) {
+    bubbleIndex = scrubIndex;
+    bubbleUv = todaysData[scrubIndex].uv;
+    bubbleTime = new Date(todaysData[scrubIndex].time).getHours().toString().padStart(2, '0') + ':00';
+  }
+
+  const bubbleLeftPercent = (bubbleIndex / 23) * 100;
+  const scrubDotX = (bubbleIndex / 23) * graphWidth;
+  const scrubDotY = graphHeight - (bubbleUv / maxUvInGraph) * graphHeight;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '40px', minHeight: '100vh', backgroundColor: '#000000', userSelect: 'none', WebkitUserSelect: 'none' }}>
@@ -139,16 +182,30 @@ export default function UVDetailView() {
         </div>
       </div>
 
-      {/* 4. UV-Kurvan (Custom SVG) */}
-      <div style={{ width: '100%', height: '140px', position: 'relative', marginTop: '40px' }}>
+      {/* 4. UV-Kurvan (Custom SVG) med Scrubber */}
+      <div 
+        ref={graphRef}
+        onPointerDown={handleGraphPointerDown}
+        onPointerMove={handleGraphPointerMove}
+        onPointerUp={handleGraphPointerUp}
+        onPointerLeave={handleGraphPointerUp}
+        style={{ 
+          width: '100%', 
+          height: '140px', 
+          position: 'relative', 
+          marginTop: '40px',
+          touchAction: 'none', // Förhindra scroll när man skrubbar grafen
+          cursor: 'ew-resize'
+        }}
+      >
         
-        {/* Peek Bubbla över grafen */}
+        {/* Peek / Scrub Bubbla över grafen */}
         <div style={{
           position: 'absolute',
           top: '-30px',
-          left: '50%',
-          transform: `translateX(-50%) scale(${isPeeking ? 1 : 0.8})`,
-          opacity: isPeeking ? 1 : 0,
+          left: `${bubbleLeftPercent}%`,
+          transform: `translateX(-50%) scale(${showBubble ? 1 : 0.8})`,
+          opacity: showBubble ? 1 : 0,
           backgroundColor: 'rgba(50, 50, 50, 0.9)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
@@ -157,12 +214,12 @@ export default function UVDetailView() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          transition: 'opacity 0.2s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
           zIndex: 20,
           pointerEvents: 'none'
         }}>
-          <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '16px' }}>UV {maxUv.toFixed(1)}</span>
-          <span style={{ color: '#ffffff', opacity: 0.8, fontSize: '14px' }}>{peakTime}</span>
+          <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '16px' }}>UV {bubbleUv.toFixed(1)}</span>
+          <span style={{ color: '#ffffff', opacity: 0.8, fontSize: '14px' }}>{bubbleTime}</span>
         </div>
 
         <svg width="100%" height="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="none">
@@ -182,6 +239,11 @@ export default function UVDetailView() {
           {/* Baseline */}
           <line x1="0" y1={graphHeight} x2={graphWidth} y2={graphHeight} stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
           
+          {/* Markör för scrubbing (ritad som en prick på kurvan) */}
+          {showBubble && (
+            <circle cx={scrubDotX} cy={scrubDotY} r="6" fill="#ffffff" />
+          )}
+
           {/* Ticks & Labels */}
           {/* Sunrise */}
           <line x1={sunriseX} y1={graphHeight - 4} x2={sunriseX} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
@@ -202,19 +264,22 @@ export default function UVDetailView() {
           </text>
         </svg>
 
-        {/* Current Time Icon overlay (Cloud/Sun) */}
-        <div style={{
-          position: 'absolute',
-          left: `${(currentHour / 23) * 100}%`,
-          top: `calc(${currentY}px - 14px)`,
-          transform: 'translateX(-50%)',
-          backgroundColor: '#000000',
-          borderRadius: '50%',
-          boxShadow: '0 0 10px rgba(0,0,0,0.5)',
-          padding: '2px'
-        }}>
-          <Cloud size={24} color="#ffffff" fill="#ffffff" />
-        </div>
+        {/* Current Time Icon overlay (Cloud/Sun) - göm den om vi skrubbar över den */}
+        {!showBubble && (
+          <div style={{
+            position: 'absolute',
+            left: `${(currentHour / 23) * 100}%`,
+            top: `calc(${currentY}px - 14px)`,
+            transform: 'translateX(-50%)',
+            backgroundColor: '#000000',
+            borderRadius: '50%',
+            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+            padding: '2px',
+            pointerEvents: 'none'
+          }}>
+            <Cloud size={24} color="#ffffff" fill="#ffffff" />
+          </div>
+        )}
       </div>
 
       {/* 5. UV-hjulet (Mekanisk Dial) */}
@@ -227,9 +292,9 @@ export default function UVDetailView() {
           WebkitTapHighlightColor: 'transparent',
           touchAction: 'none' // Förhindra scroll när vi håller in
         }}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerDown={handlePointerDownDial}
+        onPointerUp={handlePointerUpDial}
+        onPointerLeave={handlePointerUpDial}
         onContextMenu={(e) => e.preventDefault()}
       >
         <svg width="340" height="340" viewBox="0 0 340 340">
@@ -279,13 +344,13 @@ export default function UVDetailView() {
 
         {/* 6. Mitteninformation (Fast) */}
         <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '0px', pointerEvents: 'none' }}>
-          <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking ? 'auto' : '0', overflow: 'hidden' }}>
-            Peak UV
+          <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking || scrubIndex !== null ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking || scrubIndex !== null ? 'auto' : '0', overflow: 'hidden' }}>
+            {isPeeking ? 'Peak UV' : `${bubbleTime}`}
           </span>
           <span className="font-bold" style={{ fontSize: '84px', color: '#ffffff', letterSpacing: '-3px', lineHeight: '1.1' }}>
             <AnimatedNumber value={displayUv} />
           </span>
-          <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking ? 0 : 1, transition: 'opacity 0.3s' }}>
+          <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking || scrubIndex !== null ? 0 : 1, transition: 'opacity 0.3s' }}>
             Aktuellt UV
           </span>
         </div>
