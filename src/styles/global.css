@@ -1,10 +1,10 @@
 :root {
   --bg-color: #000000;
-  --text-color: #ffffff;
+  --text-color: #8e8e93;
   --text-muted: #8e8e93; /* Apple standard gray */
   --card-bg: #000000;
   --card-border: rgba(255, 255, 255, 0.08);
-  --accent: #ffffff;
+  --accent: #8e8e93;
 }
 
 [data-theme='light'] {

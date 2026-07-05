@@ -37,32 +37,32 @@ export default function ParameterDetailView() {
     case 'temp':
       title = 'Temperaturutveckling';
       lines = [
-        <Line key="1" type="monotone" dataKey="temp" stroke="#ffffff" strokeWidth={3} dot={false} />,
-        <Line key="2" type="monotone" dataKey="feelsLike" stroke="#888888" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+        <Line key="1" type="monotone" dataKey="temp" stroke="#8e8e93" strokeWidth={3} dot={false} />,
+        <Line key="2" type="monotone" dataKey="feelsLike" stroke="#4a4a4a" strokeWidth={2} strokeDasharray="5 5" dot={false} />
       ];
       break;
     case 'wind':
       title = 'Vind & Byar (m/s)';
       lines = [
-        <Line key="1" type="monotone" dataKey="wind" stroke="#ffffff" strokeWidth={3} dot={false} />,
-        <Line key="2" type="monotone" dataKey="gusts" stroke="#888888" strokeWidth={2} strokeDasharray="3 3" dot={false} />
+        <Line key="1" type="monotone" dataKey="wind" stroke="#8e8e93" strokeWidth={3} dot={false} />,
+        <Line key="2" type="monotone" dataKey="gusts" stroke="#4a4a4a" strokeWidth={2} strokeDasharray="3 3" dot={false} />
       ];
       break;
     case 'pressure':
       title = 'Lufttryck (hPa)';
-      lines = [<Line key="1" type="monotone" dataKey="pressure" stroke="#ffffff" strokeWidth={3} dot={false} />];
+      lines = [<Line key="1" type="monotone" dataKey="pressure" stroke="#8e8e93" strokeWidth={3} dot={false} />];
       break;
     case 'uv':
       title = 'UV-index Prognos';
-      lines = [<Line key="1" type="monotone" dataKey="uv" stroke="#ffffff" strokeWidth={3} dot={false} />];
+      lines = [<Line key="1" type="monotone" dataKey="uv" stroke="#8e8e93" strokeWidth={3} dot={false} />];
       break;
     case 'humidity':
       title = 'Luftfuktighet (%)';
-      lines = [<Line key="1" type="monotone" dataKey="humidity" stroke="#ffffff" strokeWidth={3} dot={false} />];
+      lines = [<Line key="1" type="monotone" dataKey="humidity" stroke="#8e8e93" strokeWidth={3} dot={false} />];
       break;
     case 'precipitation':
       title = 'Nederbörd (mm)';
-      lines = [<Line key="1" type="step" dataKey="precip" stroke="#ffffff" strokeWidth={3} dot={false} />];
+      lines = [<Line key="1" type="step" dataKey="precip" stroke="#8e8e93" strokeWidth={3} dot={false} />];
       break;
     default:
       title = 'Detaljer';
