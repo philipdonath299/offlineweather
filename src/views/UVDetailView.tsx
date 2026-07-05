@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Navigation } from 'lucide-react';
