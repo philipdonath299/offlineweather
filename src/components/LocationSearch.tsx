@@ -35,10 +35,9 @@ export default function LocationSearch({ onSelectLocation }: LocationSearchProps
   }, [query]);
 
   const handleSelect = async (loc: LocationSearchResult) => {
-    // Spara till favoriter om den inte redan finns
     const isSaved = savedLocations.some(s => s.id === loc.id);
     if (!isSaved) {
-      const newSaved = [loc, ...savedLocations].slice(0, 5); // Spara max 5 senaste
+      const newSaved = [loc, ...savedLocations].slice(0, 5);
       await db.saveLocations(newSaved);
       setSavedLocations(newSaved);
     }
@@ -71,64 +70,62 @@ export default function LocationSearch({ onSelectLocation }: LocationSearchProps
   };
 
   return (
-    <div style={{ position: 'relative', zIndex: 50 }}>
+    <div style={{ position: 'relative', zIndex: 50, marginBottom: '24px' }}>
       <div className="flex-center" style={{ gap: '12px' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={20} className="text-muted" style={{ position: 'absolute', left: '16px', top: '12px' }} />
+        <div className="input-container" style={{ flex: 1 }}>
+          <Search size={18} className="text-muted" style={{ marginRight: '12px' }} />
           <input
             type="text"
-            placeholder="Sök stad eller plats..."
+            placeholder="Sök plats..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setShowDropdown(true);
             }}
             onFocus={() => setShowDropdown(true)}
-            style={{ paddingLeft: '48px' }}
           />
           {query && (
-            <button 
-              onClick={() => { setQuery(''); setResults([]); }}
-              style={{ position: 'absolute', right: '16px', top: '12px' }}
-            >
-              <X size={20} className="text-muted" />
+            <button onClick={() => { setQuery(''); setResults([]); }}>
+              <X size={18} className="text-muted" />
             </button>
           )}
         </div>
-        <button onClick={handleCurrentLocation} className="glass-panel" style={{ padding: '12px' }}>
-          <MapPin size={20} />
+        <button onClick={handleCurrentLocation} className="btn-icon">
+          <MapPin size={18} className="text-muted" />
         </button>
       </div>
 
       {showDropdown && (query.length > 2 || savedLocations.length > 0) && (
-        <div className="glass-panel" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', padding: '8px 0', maxHeight: '300px', overflowY: 'auto' }}>
+        <div className="surface-card" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', maxHeight: '300px', overflowY: 'auto', padding: '0 20px' }}>
           {query.length > 2 ? (
             <>
               {isSearching ? (
-                <div style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>Söker...</div>
+                <div className="list-item text-muted">Söker...</div>
               ) : results.length > 0 ? (
                 results.map(res => (
                   <button 
                     key={res.id}
                     onClick={() => handleSelect(res)}
-                    style={{ width: '100%', textAlign: 'left', padding: '12px 16px', display: 'flex', flexDirection: 'column' }}
+                    className="list-item"
+                    style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '4px' }}
                   >
-                    <span className="font-medium">{res.name}</span>
-                    <span className="text-sm text-muted">{res.admin1 ? `${res.admin1}, ` : ''}{res.country}</span>
+                    <span className="font-medium text-md">{res.name}</span>
+                    <span className="text-xs text-muted">{res.admin1 ? `${res.admin1}, ` : ''}{res.country}</span>
                   </button>
                 ))
               ) : (
-                <div style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>Inga resultat hittades</div>
+                <div className="list-item text-muted">Inga resultat hittades</div>
               )}
             </>
           ) : (
             <>
-              <div style={{ padding: '8px 16px', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '1px' }}>Senaste platser</div>
+              <div className="section-header" style={{ marginTop: '16px' }}>Senaste platser</div>
               {savedLocations.map(res => (
                 <button 
                   key={res.id}
                   onClick={() => handleSelect(res)}
-                  style={{ width: '100%', textAlign: 'left', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}
+                  className="list-item"
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px' }}
                 >
                   <MapPin size={16} className="text-muted" />
                   <span className="font-medium">{res.name}</span>

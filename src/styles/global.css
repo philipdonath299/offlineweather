@@ -1,19 +1,12 @@
 :root {
   --bg-color: #000000;
-  --text-color: #ffffff;
+  --text-color: #f5f5f5;
   --text-muted: #888888;
-  --card-bg: #111111;
-  --border-color: #222222;
+  --card-bg: #0c0c0c;
+  --card-border: #1a1a1a;
+  --primary-btn-bg: #a8a8aa;
+  --primary-btn-text: #000000;
   --accent: #ffffff;
-}
-
-[data-theme='light'] {
-  --bg-color: #ffffff;
-  --text-color: #000000;
-  --text-muted: #666666;
-  --card-bg: #f5f5f5;
-  --border-color: #dddddd;
-  --accent: #000000;
 }
 
 * {
@@ -29,15 +22,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
-  transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
-  min-height: 100dvh; /* För moderna mobila webbläsare */
+  min-height: 100dvh;
 }
 
 /* Anpassad Scrollbar för en ren look */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -45,29 +37,36 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: #333;
+  border-radius: 4px;
 }
 
 .app-container {
-  max-width: 800px;
+  max-width: 600px; /* Smalare för en mer app-liknande känsla på desktop */
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
-/* Utility klasser */
-.glass-panel {
+/* Sudoku-liknande "Settings"-kort */
+.surface-card {
   background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 24px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
   padding: 20px;
+}
+
+/* Sudoku-liknande sektions-header */
+.section-header {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-left: 4px;
 }
 
 .flex-between {
@@ -87,17 +86,19 @@ body {
   flex-direction: column;
 }
 
-.text-sm { font-size: 0.875rem; }
 .text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-md { font-size: 1rem; }
 .text-lg { font-size: 1.125rem; }
 .text-xl { font-size: 1.25rem; }
 .text-2xl { font-size: 1.5rem; }
-.text-4xl { font-size: 2.5rem; line-height: 1; }
-.text-6xl { font-size: 4rem; font-weight: 300; line-height: 1; }
+.text-3xl { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+.text-5xl { font-size: 3rem; font-weight: 600; letter-spacing: -1px; }
 
 .font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
 .font-medium { font-weight: 500; }
-.font-light { font-weight: 300; }
+.font-regular { font-weight: 400; }
 
 .text-muted { color: var(--text-muted); }
 
@@ -107,7 +108,11 @@ button {
   color: var(--text-color);
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 button:hover {
@@ -119,18 +124,84 @@ button:disabled {
   cursor: not-allowed;
 }
 
-input {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  padding: 12px 16px;
+/* Sudoku-liknande Primär knapp ("Continue Game") */
+.btn-primary {
+  background-color: var(--primary-btn-bg);
+  color: var(--primary-btn-text);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 16px 24px;
   border-radius: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sudoku-liknande Sekundär knapp ("New Game", "Daily Challenge") */
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 16px 24px;
+  border-radius: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Cirkulär liten ikon-knapp för menu/settings */
+.btn-icon {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+input {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
   font-family: inherit;
+  font-size: 1rem;
   width: 100%;
   outline: none;
+}
+
+/* Sudoku inställnings-dropdown look */
+.input-container {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
   transition: border-color 0.2s;
 }
 
-input:focus {
-  border-color: var(--text-muted);
+.input-container:focus-within {
+  border-color: #444;
+}
+
+.list-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.list-item:first-child {
+  padding-top: 0;
 }

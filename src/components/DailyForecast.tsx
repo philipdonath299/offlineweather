@@ -20,25 +20,23 @@ export default function DailyForecast({ data }: DailyForecastProps) {
   });
 
   return (
-    <div className="glass-panel">
-      <h3 className="text-sm text-muted font-medium" style={{ marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-        10-dygnsprognos
-      </h3>
-      <div className="flex-col" style={{ gap: '16px' }}>
+    <div className="surface-card" style={{ padding: '16px 24px' }}>
+      <div className="section-header" style={{ marginTop: '8px' }}>10-dygnsprognos</div>
+      <div className="flex-col">
         {days.map((day, i) => {
           const Icon = getWeatherIcon(day.weatherCode);
           return (
-            <div key={i} className="flex-between">
-              <span className="text-md font-medium" style={{ width: '60px' }}>{day.dayName}</span>
+            <div key={i} className="list-item flex-between">
+              <span className="text-md font-medium" style={{ width: '70px' }}>{day.dayName}</span>
               <div className="flex-center" style={{ width: '40px' }}>
-                <Icon size={20} strokeWidth={1.5} />
+                <Icon size={20} strokeWidth={1.5} className="text-muted" />
               </div>
-              <span className="text-sm text-muted" style={{ width: '40px', textAlign: 'right', color: day.precipProb > 20 ? '#4a90e2' : 'var(--text-muted)' }}>
+              <span className="text-sm text-muted" style={{ width: '50px', textAlign: 'right' }}>
                 {day.precipProb > 0 ? `${day.precipProb}%` : ''}
               </span>
               <div className="flex-center" style={{ gap: '16px', width: '100px', justifyContent: 'flex-end' }}>
                 <span className="text-muted">{Math.round(day.tempMin)}°</span>
-                <span className="font-bold">{Math.round(day.tempMax)}°</span>
+                <span className="font-semibold">{Math.round(day.tempMax)}°</span>
               </div>
             </div>
           );

@@ -18,7 +18,7 @@ export default function WeatherDetails({ data }: WeatherDetailsProps) {
       icon: Wind,
     },
     {
-      title: 'Luftfuktighet',
+      title: 'Fuktighet',
       value: `${data.current.humidity}%`,
       icon: Droplets,
     },
@@ -40,18 +40,14 @@ export default function WeatherDetails({ data }: WeatherDetailsProps) {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
       {details.map((item, i) => {
         const Icon = item.icon;
         return (
-          <div key={i} className="glass-panel flex-col" style={{ gap: '12px' }}>
-            <div className="flex-center text-muted" style={{ gap: '8px', justifyContent: 'flex-start' }}>
-              <Icon size={16} />
-              <span className="text-xs font-medium" style={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                {item.title}
-              </span>
-            </div>
-            <span className="text-xl font-medium">{item.value}</span>
+          <div key={i} className="btn-secondary flex-col" style={{ alignItems: 'center', padding: '24px 16px', gap: '12px', cursor: 'default' }}>
+            <Icon size={24} strokeWidth={1.5} className="text-muted" />
+            <span className="text-md font-medium text-muted">{item.title}</span>
+            <span className="text-xl font-semibold">{item.value}</span>
           </div>
         );
       })}
