@@ -276,7 +276,6 @@ export default function UVDetailView() {
             data={chartData} 
             margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
             onMouseMove={handleChartInteraction}
-            onTouchMove={handleChartInteraction}
           >
             <defs>
               <linearGradient id="uvGradient" x1="0" y1="0" x2="0" y2="1">
