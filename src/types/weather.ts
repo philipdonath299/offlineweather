@@ -1,3 +1,10 @@
+export interface AirQualityData {
+  aqi: number[];
+  pm10: number[];
+  pm2_5: number[];
+  time: string[];
+}
+
 export interface WeatherData {
   current: {
     temp: number;
@@ -23,7 +30,13 @@ export interface WeatherData {
     precipitationProbability: number[];
     uvIndex: number[];
     windSpeed: number[];
+    windDirection: number[];
+    windGusts: number[];
     humidity: number[];
+    dewPoint: number[];
+    pressure: number[];
+    cloudCover: number[];
+    visibility: number[];
     weatherCode: number[];
   };
   daily: {
@@ -38,6 +51,7 @@ export interface WeatherData {
     sunset: string[];
     weatherCode: number[];
   };
+  airQuality?: AirQualityData;
   location: {
     name: string;
     latitude: number;
@@ -47,11 +61,24 @@ export interface WeatherData {
 }
 
 export interface Settings {
-  unitSystem: 'metric' | 'imperial'; // metric: C, m/s | imperial: F, mph
+  temperatureUnit: 'celsius' | 'fahrenheit';
+  windUnit: 'ms' | 'kmh' | 'mph' | 'knots';
+  precipitationUnit: 'mm' | 'inch';
   timeFormat: '24h' | '12h';
-  theme: 'dark' | 'light';
+  theme: 'dark'; // Låst till mörkt tema
   autoLocation: boolean;
+  autoUpdate: boolean;
 }
+
+export const defaultSettings: Settings = {
+  temperatureUnit: 'celsius',
+  windUnit: 'ms',
+  precipitationUnit: 'mm',
+  timeFormat: '24h',
+  theme: 'dark',
+  autoLocation: true,
+  autoUpdate: true,
+};
 
 export interface LocationSearchResult {
   id: number;

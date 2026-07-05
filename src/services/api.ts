@@ -1,24 +1,54 @@
-import { WeatherData, LocationSearchResult } from '../types/weather';
+import { WeatherData, LocationSearchResult, AirQualityData } from '../types/weather';
 
 const API_BASE = 'https://api.open-meteo.com/v1/forecast';
 const GEO_API_BASE = 'https://geocoding-api.open-meteo.com/v1/search';
+const AQI_API_BASE = 'https://air-quality-api.open-meteo.com/v1/air-quality';
+
+export async function fetchAirQuality(lat: number, lon: number): Promise<AirQualityData | undefined> {
+  try {
+    const params = new URLSearchParams({
+      latitude: lat.toString(),
+      longitude: lon.toString(),
+      hourly: 'pm10,pm2_5,european_aqi',
+      timezone: 'auto',
+    });
+    const res = await fetch(`${AQI_API_BASE}?${params.toString()}`);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    return {
+      aqi: data.hourly.european_aqi,
+      pm10: data.hourly.pm10,
+      pm2_5: data.hourly.pm2_5,
+      time: data.hourly.time,
+    };
+  } catch (e) {
+    console.warn("Kunde inte hämta AQI", e);
+    return undefined;
+  }
+}
 
 export async function fetchWeather(lat: number, lon: number, name: string): Promise<WeatherData> {
   const params = new URLSearchParams({
     latitude: lat.toString(),
     longitude: lon.toString(),
     current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-    hourly: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,visibility,wind_speed_10m,uv_index',
+    hourly: 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,pressure_msl,surface_pressure,cloud_cover,visibility,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max',
     timezone: 'auto',
+    past_days: '1', // Hämta 1 dags historik
+    forecast_days: '10', // Upp till 10 dagars prognos
   });
 
-  const response = await fetch(`${API_BASE}?${params.toString()}`);
-  if (!response.ok) {
+  const [weatherRes, aqiData] = await Promise.all([
+    fetch(`${API_BASE}?${params.toString()}`),
+    fetchAirQuality(lat, lon)
+  ]);
+
+  if (!weatherRes.ok) {
     throw new Error('Failed to fetch weather data');
   }
   
-  const data = await response.json();
+  const data = await weatherRes.json();
   
   return {
     location: {
@@ -34,7 +64,7 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       windGusts: data.current.wind_gusts_10m,
       windDirection: data.current.wind_direction_10m,
       pressure: data.current.surface_pressure,
-      uvIndex: data.hourly.uv_index[0] || 0, // Fallback to current hour
+      uvIndex: data.hourly.uv_index[0] || 0,
       visibility: data.hourly.visibility[0] || 10000,
       dewPoint: data.current.temperature_2m - ((100 - data.current.relative_humidity_2m) / 5), // Approx
       cloudCover: data.current.cloud_cover,
@@ -50,7 +80,13 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       precipitationProbability: data.hourly.precipitation_probability,
       uvIndex: data.hourly.uv_index,
       windSpeed: data.hourly.wind_speed_10m,
+      windDirection: data.hourly.wind_direction_10m,
+      windGusts: data.hourly.wind_gusts_10m,
       humidity: data.hourly.relative_humidity_2m,
+      dewPoint: data.hourly.dew_point_2m,
+      pressure: data.hourly.surface_pressure,
+      cloudCover: data.hourly.cloud_cover,
+      visibility: data.hourly.visibility,
       weatherCode: data.hourly.weather_code,
     },
     daily: {
@@ -65,6 +101,7 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       sunset: data.daily.sunset,
       weatherCode: data.daily.weather_code,
     },
+    airQuality: aqiData,
     lastUpdated: Date.now(),
   };
 }
