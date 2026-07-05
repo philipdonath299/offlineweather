@@ -83,8 +83,6 @@ export default function UVDetailView() {
 
   // SVG Gauge Beräkningar
   const radius = 135; // Något större för att matcha referensen
-  const circumference = 2 * Math.PI * radius;
-  const uvPercentage = Math.min((displayUv / 11) * 100, 100);
 
   // För kurvan: bygger en egen SVG-kurva för att ha full kontroll över utseendet.
   // Vi mappar 24 timmar till en bredd på 100% (använder viewBox 0 0 400 120).
