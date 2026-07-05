@@ -224,7 +224,7 @@ export default function UVDetailView() {
         </div>
       </div>
 
-      {/* 5. UV-hjulet */}
+      {/* 5. UV-hjulet (Mekanisk Dial) */}
       <div 
         className="flex-center" 
         style={{ 
@@ -237,60 +237,63 @@ export default function UVDetailView() {
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onContextMenu={(e) => e.preventDefault()} // Förhindra text-selection/meny på mobil
+        onContextMenu={(e) => e.preventDefault()}
       >
         <svg width="340" height="340" viewBox="0 0 340 340">
           <defs>
-             <path id="textPathWheel" d="M 170 30 a 140 140 0 1 1 -0.1 0" />
+             {/* Ringen går från Top Center (170, 35) och medurs, radie 135 */}
+             <path id="ringPath" d="M 170 35 A 135 135 0 1 1 169.9 35" fill="none" />
           </defs>
           
-          <text fill="#8e8e93" fontSize="13" letterSpacing="8" fontWeight="500" opacity={0.8}>
-            <textPath href="#textPathWheel" startOffset="3%">
-               LOW | MODERATE | HIGH | VERY HIGH | EXTREME
-            </textPath>
-          </text>
-
-          {/* Bakgrundscirkel (ring) */}
-          <circle 
-            cx="170" cy="170" r={radius} 
-            fill="none" 
-            stroke="rgba(255,255,255,0.08)" 
-            strokeWidth="32" 
-          />
-          
-          {/* Värdecirkel (Aktiv) */}
-          <circle 
-            cx="170" cy="170" r={radius} 
-            fill="none" 
-            stroke="#ffffff" 
-            strokeWidth="32" 
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform="rotate(-90 170 170)"
-            style={{ transition: 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)' }}
-          />
-          
-          {/* Pekare (Svart triangel mot inre ringen för att klippa ut, likt referens) */}
+          {/* Roterande yttre ring */}
           <g 
-            transform={`rotate(${rotationAngle} 170 170)`} 
-            style={{ transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' }}
+            transform={`rotate(${-((displayUv / 14) * 360)} 170 170)`} 
+            style={{ transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)' }}
           >
-             {/* I referensen pekar en liten inbuktning ut mot kanten. Vi ritar en svart polygon som skär in i ringen. */}
-             <polygon points="170,30 160,50 180,50" fill="#000000" />
+            {/* Tjock bakgrundsring */}
+            <circle cx="170" cy="170" r="135" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="36" />
+            
+            {/* Ticks vid gränserna */}
+            {[0, 3, 6, 8, 11].map(uv => (
+              <g key={uv} transform={`rotate(${(uv / 14) * 360} 170 170)`}>
+                <line x1="170" y1="17" x2="170" y2="53" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
+              </g>
+            ))}
+
+            {/* Texter centrerade i sina sektioner */}
+            <text fill="#ffffff" fontSize="13" fontWeight="600" letterSpacing="2">
+              {[
+                { text: 'LOW', uv: 1.5 },
+                { text: 'MODERATE', uv: 4.5 },
+                { text: 'HIGH', uv: 7 },
+                { text: 'VERY HIGH', uv: 9.5 },
+                { text: 'EXTREME', uv: 12.5 },
+              ].map(item => (
+                <textPath key={item.text} href="#ringPath" startOffset={`${(item.uv / 14) * 100}%`} textAnchor="middle">
+                  {item.text}
+                </textPath>
+              ))}
+            </text>
           </g>
 
-          {/* Mitten (Helt svart) */}
+          {/* Fasta inre delar */}
+          {/* Svart mittcirkel */}
           <circle cx="170" cy="170" r="115" fill="#000000" />
+          
+          {/* Fast pil som pekar ut mot ringen på kl 12 */}
+          <polygon points="160,55 180,55 170,42" fill="#ffffff" />
         </svg>
 
-        {/* 6. Mitteninformation */}
-        <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '0px' }}>
+        {/* 6. Mitteninformation (Fast) */}
+        <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '0px', pointerEvents: 'none' }}>
           <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking ? 'auto' : '0', overflow: 'hidden' }}>
             Peak UV
           </span>
           <span className="font-bold" style={{ fontSize: '84px', color: '#ffffff', letterSpacing: '-3px', lineHeight: '1.1' }}>
             <AnimatedNumber value={displayUv} />
+          </span>
+          <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking ? 0 : 1, transition: 'opacity 0.3s' }}>
+            Aktuellt UV
           </span>
         </div>
       </div>
