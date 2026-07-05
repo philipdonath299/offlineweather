@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, SunDim, RotateCcw } from 'lucide-react';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { ArrowLeft, Navigation, Cloud } from 'lucide-react';
+import { getWeatherDescription } from '../utils/weatherCodes';
 
 // En egen animerad siffra-komponent som använder requestAnimationFrame för 60fps uppdateringar
 function AnimatedNumber({ value }: { value: number }) {
@@ -15,13 +15,13 @@ function AnimatedNumber({ value }: { value: number }) {
     startValueRef.current = displayValue;
     startTimeRef.current = performance.now();
     
-    const duration = 300; // ms animation
+    const duration = 400; // ms animation för peek
 
     const animate = (time: number) => {
       if (!startTimeRef.current) return;
       const progress = Math.min((time - startTimeRef.current) / duration, 1);
       
-      // Easing: easeOutExpo (mjuk inbromsning)
+      // Easing: spring-liknande mjuk inbromsning (easeOutExpo)
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       
       const nextValue = startValueRef.current + (value - startValueRef.current) * easeProgress;
@@ -37,7 +37,7 @@ function AnimatedNumber({ value }: { value: number }) {
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [value]); // Bara animera om värdet ändras
+  }, [value]);
 
   return <>{displayValue.toFixed(1)}</>;
 }
@@ -45,15 +45,13 @@ function AnimatedNumber({ value }: { value: number }) {
 export default function UVDetailView() {
   const { data } = useWeatherContext();
   const navigate = useNavigate();
-
-  const [activeItem, setActiveItem] = useState<{ time: string, uv: number } | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [isPeeking, setIsPeeking] = useState(false);
 
   if (!data) return null;
 
   const currentUv = data.current.uvIndex;
   
+  // Dagens max-UV och data för kurvan
   const today = new Date().toISOString().substring(0, 10);
   const todaysData = data.hourly.time.map((t, i) => ({
     time: t,
@@ -62,275 +60,255 @@ export default function UVDetailView() {
   
   const peakUvItem = [...todaysData].sort((a, b) => b.uv - a.uv)[0];
   const maxUv = peakUvItem?.uv || 0;
+  const peakTime = new Date(peakUvItem?.time || '').getHours().toString().padStart(2, '0') + ':00';
+
+  // Aktuell tid (endast timme för enklare matchning på kurvan)
+  const currentHour = new Date().getHours();
   
-  const times = useMemo(() => {
-    const t = {
-      start: '',
-      level1: '',
-      moderate: '',
-      high: '',
-      peak: new Date(peakUvItem?.time || '').getHours() + ':00',
-      decrease: '',
-      low: '',
-      end: ''
-    };
-    
-    let peaked = false;
-    todaysData.forEach((item) => {
-      const hour = new Date(item.time).getHours() + ':00';
-      if (item.uv > 0 && !t.start) t.start = hour;
-      if (item.uv >= 1 && !t.level1) t.level1 = hour;
-      if (item.uv >= 3 && !t.moderate) t.moderate = hour;
-      if (item.uv >= 6 && !t.high) t.high = hour;
-      if (item.time === peakUvItem?.time) peaked = true;
-      if (peaked) {
-        if (item.uv < maxUv && !t.decrease) t.decrease = hour;
-        if (item.uv < 3 && item.uv > 0 && !t.low && t.decrease) t.low = hour;
-        if (item.uv === 0 && !t.end && t.decrease) t.end = hour;
-      }
-    });
-    return t;
-  }, [todaysData, maxUv, peakUvItem]);
+  // Värde att visa (aktuellt vs peak)
+  const displayUv = isPeeking ? maxUv : currentUv;
 
-  const chartData = todaysData.map(item => ({
-    time: new Date(item.time).getHours().toString().padStart(2, '0') + ':00',
-    uv: item.uv,
-    rawTime: item.time
-  }));
+  let riskLevelCurrent = 'LÅG';
+  if (currentUv >= 3) riskLevelCurrent = 'MÅTTLIG';
+  if (currentUv >= 6) riskLevelCurrent = 'HÖG';
+  if (currentUv >= 8) riskLevelCurrent = 'MYCKET HÖG';
+  if (currentUv >= 11) riskLevelCurrent = 'EXTREM';
+  if (currentUv === 0) riskLevelCurrent = 'INGEN UV';
 
-  const nowHourStr = new Date().getHours().toString().padStart(2, '0') + ':00';
+  let riskLevelDisplay = 'LOW';
+  if (displayUv >= 3) riskLevelDisplay = 'MODERATE';
+  if (displayUv >= 6) riskLevelDisplay = 'HIGH';
+  if (displayUv >= 8) riskLevelDisplay = 'VERY HIGH';
+  if (displayUv >= 11) riskLevelDisplay = 'EXTREME';
+  if (displayUv === 0) riskLevelDisplay = 'NO UV';
 
-  // Bestäm vilket värde hjulet ska visa
-  // 1. Om man skrubbar -> visa det skrubbade värdet.
-  // 2. Om man har expanderat vyn (klickat på hjulet) -> visa dagens max-värde.
-  // 3. Annars -> visa nuvarande värde.
-  const displayUv = isScrubbing && activeItem ? activeItem.uv : (expanded ? maxUv : currentUv);
-  const displayTime = isScrubbing && activeItem ? activeItem.time : (expanded ? 'Dagens Max' : 'Nu');
+  // Rubriken översatt tillbaka till svenska för enhetlighet (eller engelska om det var så i bilden)
+  // Vi kör engelska i rubriken för att matcha bilden "NO UV" / "MODERATE" om så önskas, 
+  // men appen är på svenska. Vi använder svensk översättning av referensens rubriker.
+  let headerTitle = 'LÅG';
+  if (currentUv >= 3) headerTitle = 'MÅTTLIG';
+  if (currentUv >= 6) headerTitle = 'HÖG';
+  if (currentUv >= 8) headerTitle = 'MYCKET HÖG';
+  if (currentUv >= 11) headerTitle = 'EXTREM';
+  if (currentUv === 0) headerTitle = 'INGEN UV';
 
-  // Nattlogik (om det är mitt i natten och currentUV = 0)
-  const isNight = currentUv === 0 && !isScrubbing && !expanded;
+  const weatherDesc = getWeatherDescription(data.current.weatherCode);
 
-  let riskLevel = 'LÅG';
-  if (displayUv >= 3) riskLevel = 'MÅTTLIG';
-  if (displayUv >= 6) riskLevel = 'HÖG';
-  if (displayUv >= 8) riskLevel = 'MYCKET HÖG';
-  if (displayUv >= 11) riskLevel = 'EXTREM';
-  if (displayUv === 0) riskLevel = 'INGEN UV';
-
-  const radius = 120;
+  // SVG Gauge Beräkningar
+  const radius = 135; // Något större för att matcha referensen
   const circumference = 2 * Math.PI * radius;
   const uvPercentage = Math.min((displayUv / 11) * 100, 100);
   const strokeDashoffset = circumference - (uvPercentage / 100) * circumference;
   const rotationAngle = (displayUv / 11) * 360 - 90;
 
-  const handleChartInteraction = (state: any) => {
-    if (state && state.activePayload && state.activePayload.length > 0) {
-      setIsScrubbing(true);
-      setActiveItem({
-        time: state.activePayload[0].payload.time,
-        uv: state.activePayload[0].payload.uv
-      });
-      setExpanded(false); // Stäng expandern om vi börjar skrubba
-    }
-  };
+  // För kurvan: bygger en egen SVG-kurva för att ha full kontroll över utseendet.
+  // Vi mappar 24 timmar till en bredd på 100% (använder viewBox 0 0 400 120).
+  const graphWidth = 400;
+  const graphHeight = 120;
+  const maxUvInGraph = Math.max(11, maxUv + 1); // Skala så att kurvan får plats
+  
+  // Skapa en path för arean och linjen
+  const points = todaysData.map((item, i) => {
+    const x = (i / 23) * graphWidth;
+    const y = graphHeight - (item.uv / maxUvInGraph) * graphHeight;
+    return `${x},${y}`;
+  });
+  
+  // Enkel spline/smooth line (för detta räcker en polyline om vi har många punkter, men för mjukhet gör vi Bezier curves)
+  const linePath = points.length > 0 
+    ? `M ${points[0]} ` + points.slice(1).map((p, i) => {
+        // Enkel smoothing: dra linjer. (Vi har 24 punkter, det blir rätt mjukt)
+        return `L ${p}`;
+      }).join(' ')
+    : '';
+    
+  const areaPath = linePath ? `${linePath} L ${graphWidth},${graphHeight} L 0,${graphHeight} Z` : '';
 
-  const handleReset = () => {
-    setIsScrubbing(false);
-    setActiveItem(null);
-    setExpanded(false);
-  };
+  // Soluppgång / nedgång markeringar
+  const sunriseHour = new Date(data.daily.sunrise[0]).getHours();
+  const sunsetHour = new Date(data.daily.sunset[0]).getHours();
+  
+  const sunriseX = (sunriseHour / 23) * graphWidth;
+  const sunsetX = (sunsetHour / 23) * graphWidth;
+  const currentX = (currentHour / 23) * graphWidth;
+  const currentY = graphHeight - (currentUv / maxUvInGraph) * graphHeight;
 
-  const handleWheelClick = () => {
-    // Om vi redan är i scrubbing mode, återställ först
-    setIsScrubbing(false);
-    setExpanded(!expanded);
-  };
+  // Animation handlers
+  const handlePointerDown = () => setIsPeeking(true);
+  const handlePointerUp = () => setIsPeeking(false);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
-      <div className="flex-between" style={{ marginTop: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '40px', minHeight: '100vh', backgroundColor: '#000000', userSelect: 'none', WebkitUserSelect: 'none' }}>
+      {/* Navigation */}
+      <div className="flex-between" style={{ padding: '16px' }}>
         <button onClick={() => navigate(-1)} className="flex-center" style={{ gap: '8px' }}>
           <ArrowLeft size={20} className="text-muted" />
-          <span className="font-medium text-muted">Detaljer</span>
         </button>
-        <span className="font-semibold" style={{ fontSize: '18px' }}>UV-index</span>
-        <div style={{ width: '60px' }}>
-           {isScrubbing && (
-             <button onClick={handleReset} className="flex-center text-muted" style={{ padding: '8px' }}>
-               <RotateCcw size={18} />
-             </button>
-           )}
+      </div>
+
+      {/* 1-3. Rubrik, Beskrivning, Plats */}
+      <div className="flex-col flex-center" style={{ textAlign: 'center', marginTop: '10px', gap: '6px', position: 'relative', zIndex: 10 }}>
+        <h1 style={{ fontSize: '42px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: '1' }}>
+          {headerTitle}
+        </h1>
+        <p style={{ fontSize: '18px', fontWeight: '500', color: '#ffffff', marginTop: '4px' }}>
+          {weatherDesc}
+        </p>
+        <div className="flex-center" style={{ gap: '4px', color: '#ffffff', fontSize: '15px', fontWeight: '500', opacity: 0.9 }}>
+          <Navigation size={14} fill="#ffffff" strokeWidth={0} />
+          {data.location.name}
         </div>
       </div>
 
-      <div className="flex-col flex-center" style={{ textAlign: 'center', gap: '4px', height: '60px' }}>
-        <h1 className="text-3xl font-bold transition-all" style={{ color: '#ffffff' }}>{riskLevel}</h1>
-        <p className="text-muted text-md transition-all">
-          {displayTime === 'Nu' ? 'Aktuellt index' : displayTime === 'Dagens Max' ? 'Dagens högsta värde' : `Prognos kl. ${displayTime}`}
-        </p>
+      {/* 4. UV-Kurvan (Custom SVG) */}
+      <div style={{ width: '100%', height: '140px', position: 'relative', marginTop: '40px' }}>
+        
+        {/* Peek Bubbla över grafen */}
+        <div style={{
+          position: 'absolute',
+          top: '-30px',
+          left: '50%',
+          transform: `translateX(-50%) scale(${isPeeking ? 1 : 0.8})`,
+          opacity: isPeeking ? 1 : 0,
+          backgroundColor: 'rgba(50, 50, 50, 0.9)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderRadius: '20px',
+          padding: '8px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          zIndex: 20,
+          pointerEvents: 'none'
+        }}>
+          <span style={{ color: '#ffffff', fontWeight: '600', fontSize: '16px' }}>UV {maxUv.toFixed(1)}</span>
+          <span style={{ color: '#ffffff', opacity: 0.8, fontSize: '14px' }}>{peakTime}</span>
+        </div>
+
+        <svg width="100%" height="100%" viewBox={`0 0 ${graphWidth} ${graphHeight}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.15} />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
+          {/* Area Fill */}
+          <path d={areaPath} fill="url(#areaGradient)" />
+
+          {/* Curve Line */}
+          <path d={linePath} fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Baseline */}
+          <line x1="0" y1={graphHeight} x2={graphWidth} y2={graphHeight} stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+          
+          {/* Ticks & Labels */}
+          {/* Sunrise */}
+          <line x1={sunriseX} y1={graphHeight - 4} x2={sunriseX} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+          <text x={sunriseX} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
+             {new Date(data.daily.sunrise[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          </text>
+
+          {/* Peak / Middle (approx) */}
+          <line x1={graphWidth/2} y1={graphHeight - 4} x2={graphWidth/2} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+          <text x={graphWidth/2} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
+             12:00
+          </text>
+
+          {/* Sunset */}
+          <line x1={sunsetX} y1={graphHeight - 4} x2={sunsetX} y2={graphHeight + 4} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+          <text x={sunsetX} y={graphHeight + 15} fill="rgba(255,255,255,0.8)" fontSize="10" textAnchor="middle">
+             {new Date(data.daily.sunset[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          </text>
+        </svg>
+
+        {/* Current Time Icon overlay (Cloud/Sun) */}
+        <div style={{
+          position: 'absolute',
+          left: `${(currentHour / 23) * 100}%`,
+          top: `calc(${currentY}px - 14px)`,
+          transform: 'translateX(-50%)',
+          backgroundColor: '#000000',
+          borderRadius: '50%',
+          boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+          padding: '2px'
+        }}>
+          <Cloud size={24} color="#ffffff" fill="#ffffff" />
+        </div>
       </div>
 
-      {/* Cirkulärt UV-hjul (Gauge) */}
+      {/* 5. UV-hjulet */}
       <div 
         className="flex-center" 
         style={{ 
           position: 'relative', 
-          padding: '10px 0',
+          flex: 1,
           cursor: 'pointer',
-          transform: expanded ? 'scale(1.05)' : 'scale(1)',
-          transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
-        }} 
-        onClick={handleWheelClick}
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'none' // Förhindra scroll när vi håller in
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onContextMenu={(e) => e.preventDefault()} // Förhindra text-selection/meny på mobil
       >
-        <svg width="280" height="280" viewBox="0 0 280 280">
+        <svg width="340" height="340" viewBox="0 0 340 340">
           <defs>
-             <path id="textPathOut" d="M 140 20 a 120 120 0 1 1 -0.1 0" />
+             <path id="textPathWheel" d="M 170 30 a 140 140 0 1 1 -0.1 0" />
           </defs>
           
-          <text fill="#8e8e93" fontSize="11" letterSpacing="5" fontWeight="600" opacity={0.6}>
-            <textPath href="#textPathOut" startOffset="3%">
+          <text fill="#8e8e93" fontSize="13" letterSpacing="8" fontWeight="500" opacity={0.8}>
+            <textPath href="#textPathWheel" startOffset="3%">
                LOW | MODERATE | HIGH | VERY HIGH | EXTREME
             </textPath>
           </text>
 
-          {/* Bakgrundscirkel */}
+          {/* Bakgrundscirkel (ring) */}
           <circle 
-            cx="140" cy="140" r={radius} 
+            cx="170" cy="170" r={radius} 
             fill="none" 
-            stroke="rgba(255,255,255,0.06)" 
-            strokeWidth="18" 
+            stroke="rgba(255,255,255,0.08)" 
+            strokeWidth="32" 
           />
           
-          {/* Värdecirkel */}
+          {/* Värdecirkel (Aktiv) */}
           <circle 
-            cx="140" cy="140" r={radius} 
+            cx="170" cy="170" r={radius} 
             fill="none" 
             stroke="#ffffff" 
-            strokeWidth="18" 
+            strokeWidth="32" 
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            transform="rotate(-90 140 140)"
-            style={{ transition: 'stroke-dashoffset 0.4s cubic-bezier(0.25, 1, 0.5, 1)' }}
+            transform="rotate(-90 170 170)"
+            style={{ transition: 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)' }}
           />
           
-          {/* Inre triangel-pekare på rätt vinkel */}
+          {/* Pekare (Svart triangel mot inre ringen för att klippa ut, likt referens) */}
           <g 
-            transform={`rotate(${rotationAngle} 140 140)`} 
-            style={{ transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' }}
+            transform={`rotate(${rotationAngle} 170 170)`} 
+            style={{ transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' }}
           >
-             <polygon points="215,140 235,135 235,145" fill="#ffffff" />
+             {/* I referensen pekar en liten inbuktning ut mot kanten. Vi ritar en svart polygon som skär in i ringen. */}
+             <polygon points="170,30 160,50 180,50" fill="#000000" />
           </g>
+
+          {/* Mitten (Helt svart) */}
+          <circle cx="170" cy="170" r="115" fill="#000000" />
         </svg>
 
-        <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '4px' }}>
-          <span className="text-muted text-sm font-medium" style={{ opacity: isNight ? 0.5 : 1 }}>
-            {isNight ? 'Natt' : (expanded ? 'Peak UV' : 'UV')}
+        {/* 6. Mitteninformation */}
+        <div className="flex-col flex-center" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', gap: '0px' }}>
+          <span className="text-muted font-medium" style={{ fontSize: '18px', opacity: isPeeking ? 1 : 0, transition: 'opacity 0.3s', height: isPeeking ? 'auto' : '0', overflow: 'hidden' }}>
+            Peak UV
           </span>
-          <span className="font-bold" style={{ fontSize: '56px', color: '#ffffff', letterSpacing: '-2px' }}>
+          <span className="font-bold" style={{ fontSize: '84px', color: '#ffffff', letterSpacing: '-3px', lineHeight: '1.1' }}>
             <AnimatedNumber value={displayUv} />
           </span>
         </div>
       </div>
 
-      {/* Expandable info */}
-      <div style={{ 
-        maxHeight: expanded ? '500px' : '0px', 
-        opacity: expanded ? 1 : 0, 
-        overflow: 'hidden', 
-        transition: 'all 0.5s cubic-bezier(0.25, 1, 0.5, 1)' 
-      }}>
-        <div className="surface-card flex-col" style={{ marginBottom: '16px' }}>
-          <div className="section-header">UV Tidslinje Idag</div>
-          <div className="list-item flex-between">
-            <span className="text-muted">Solen stiger (UV &gt; 0)</span>
-            <span className="font-semibold">{times.start || '-'}</span>
-          </div>
-          {times.moderate && (
-            <div className="list-item flex-between">
-              <span className="text-muted">Måttlig UV (Skydd rekommenderas)</span>
-              <span className="font-semibold">{times.moderate}</span>
-            </div>
-          )}
-          <div className="list-item flex-between" style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-            <span className="font-semibold" style={{ color: '#ffffff' }}>Dagens Max ({maxUv})</span>
-            <span className="font-semibold" style={{ color: '#ffffff' }}>{times.peak}</span>
-          </div>
-          {times.low && (
-            <div className="list-item flex-between">
-              <span className="text-muted">Återgår till Låg</span>
-              <span className="font-semibold">{times.low}</span>
-            </div>
-          )}
-          <div className="list-item flex-between" style={{ borderBottom: 'none' }}>
-            <span className="text-muted">Solen går ner</span>
-            <span className="font-semibold">{times.end || '-'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Graf över dagens UV */}
-      <div className="surface-card" style={{ height: '220px', padding: '24px 0 0 0', position: 'relative', overflow: 'hidden' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart 
-            data={chartData} 
-            margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
-            onMouseMove={handleChartInteraction}
-          >
-            <defs>
-              <linearGradient id="uvGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8e8e93" stopOpacity={0.4}/>
-                <stop offset="95%" stopColor="#8e8e93" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="time" hide />
-            
-            {/* Markör för Nuvarande Tid */}
-            <ReferenceLine x={nowHourStr} stroke="#4a4a4a" strokeDasharray="3 3" />
-            
-            {/* Markör för Skrubbing */}
-            {isScrubbing && activeItem && (
-              <ReferenceLine x={activeItem.time} stroke="#ffffff" strokeWidth={2} />
-            )}
-
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#000000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px' }}
-              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-              labelStyle={{ color: '#8e8e93', marginBottom: '4px' }}
-              cursor={false} // Vi ritar en egen reference line
-            />
-            <Area 
-              type="monotone" 
-              dataKey="uv" 
-              stroke="#8e8e93" 
-              strokeWidth={3} 
-              fillOpacity={1} 
-              fill="url(#uvGradient)" 
-              animationDuration={500}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-        
-        <div className="flex-between text-muted text-xs" style={{ position: 'absolute', bottom: '16px', left: '24px', right: '24px', pointerEvents: 'none' }}>
-          <span>{new Date(data.daily.sunrise[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-          <span>Max {maxUv.toFixed(1)}</span>
-          <span>{new Date(data.daily.sunset[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-        </div>
-      </div>
-
-      {/* Rekommendationer */}
-      <div className="surface-card" style={{ transition: 'all 0.3s ease' }}>
-        <div className="section-header flex-center" style={{ justifyContent: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-          <SunDim size={18} />
-          REKOMMENDATIONER VID {displayUv.toFixed(1)}
-        </div>
-        <p className="text-muted" style={{ lineHeight: '1.6' }}>
-          {displayUv < 3 && 'Ingen särskild solskyddsåtgärd behövs. Det är säkert att vistas utomhus.'}
-          {displayUv >= 3 && displayUv < 6 && 'Använd solskyddsfaktor (SPF 30+) om du vistas utomhus. Solglasögon och hatt rekommenderas.'}
-          {displayUv >= 6 && displayUv < 8 && 'Solskydd krävs. Använd hatt, solglasögon och SPF 30+. Undvik solen mitt på dagen.'}
-          {displayUv >= 8 && 'Extrem försiktighet krävs! Oskyddad hud bränns mycket snabbt. Stanna i skuggan.'}
-        </p>
-      </div>
     </div>
   );
 }
