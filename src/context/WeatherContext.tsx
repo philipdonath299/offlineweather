@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { WeatherData, LocationSearchResult, Settings, defaultSettings } from '../types/weather';
 import { fetchWeather } from '../services/api';
 import { db } from '../services/db';

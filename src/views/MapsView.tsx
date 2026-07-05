@@ -24,7 +24,6 @@ export default function MapsView() {
 
   // RainViewer tile URL för radar
   // Obs: RainViewer uppdateras dynamiskt, detta är en förenklad integration
-  const radarUrl = "https://tilecache.rainviewer.com/v2/radar/1720202400/256/{z}/{x}/{y}/2/1_1.png"; // Hårdkodad tidstampel för demo
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: 'calc(100vh - 200px)' }}>

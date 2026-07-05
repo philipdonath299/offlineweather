@@ -31,7 +31,7 @@ export default function ParameterDetailView() {
   });
 
   let title = '';
-  let lines = [];
+  let lines: JSX.Element[] = [];
 
   switch (type) {
     case 'temp':
