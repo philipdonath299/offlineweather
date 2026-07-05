@@ -7,8 +7,7 @@ import {
   CloudRain,
   CloudSnow,
   CloudLightning,
-  Snowflake,
-  Wind
+  Snowflake
 } from 'lucide-react';
 
 export function getWeatherDescription(code: number): string {

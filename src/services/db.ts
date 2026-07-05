@@ -40,7 +40,8 @@ export const db = {
     await (await dbPromise).put('settings', settings, 'user-settings');
   },
   async getSavedLocations(): Promise<LocationSearchResult[]> {
-    return (await dbPromise).get('locations', 'saved-locations') || [];
+    const locations = await (await dbPromise).get('locations', 'saved-locations');
+    return locations || [];
   },
   async saveLocations(locations: LocationSearchResult[]) {
     await (await dbPromise).put('locations', locations, 'saved-locations');
