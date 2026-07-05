@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useWeatherContext } from '../context/WeatherContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Navigation } from 'lucide-react';
+import { ArrowLeft, Navigation, SunDim } from 'lucide-react';
 import { getWeatherDescription } from '../utils/weatherCodes';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -46,6 +46,7 @@ export default function UVDetailView() {
   const { data } = useWeatherContext();
   const navigate = useNavigate();
   const [isPeeking, setIsPeeking] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [activeItem, setActiveItem] = useState<{ time: string, uv: number } | null>(null);
 
   if (!data) return null;
@@ -62,6 +63,35 @@ export default function UVDetailView() {
   const peakUvItem = [...todaysData].sort((a, b) => b.uv - a.uv)[0];
   const maxUv = peakUvItem?.uv || 0;
   
+  const times = useMemo(() => {
+    const t = {
+      start: '',
+      level1: '',
+      moderate: '',
+      high: '',
+      peak: new Date(peakUvItem?.time || '').getHours() + ':00',
+      decrease: '',
+      low: '',
+      end: ''
+    };
+    
+    let peaked = false;
+    todaysData.forEach((item) => {
+      const hour = new Date(item.time).getHours() + ':00';
+      if (item.uv > 0 && !t.start) t.start = hour;
+      if (item.uv >= 1 && !t.level1) t.level1 = hour;
+      if (item.uv >= 3 && !t.moderate) t.moderate = hour;
+      if (item.uv >= 6 && !t.high) t.high = hour;
+      if (item.time === peakUvItem?.time) peaked = true;
+      if (peaked) {
+        if (item.uv < maxUv && !t.decrease) t.decrease = hour;
+        if (item.uv < 3 && item.uv > 0 && !t.low && t.decrease) t.low = hour;
+        if (item.uv === 0 && !t.end && t.decrease) t.end = hour;
+      }
+    });
+    return t;
+  }, [todaysData, maxUv, peakUvItem]);
+
   const chartData = todaysData.map(item => ({
     time: new Date(item.time).getHours().toString().padStart(2, '0') + ':00',
     uv: item.uv,
@@ -85,9 +115,10 @@ export default function UVDetailView() {
 
   const weatherDesc = getWeatherDescription(data.current.weatherCode);
 
-  // Animation handlers (Dial Peek)
+  // Animation handlers (Dial Peek & Expand)
   const handlePointerDownDial = () => setIsPeeking(true);
   const handlePointerUpDial = () => setIsPeeking(false);
+  const handleDialClick = () => setExpanded(!expanded);
 
   // Recharts handlers
   const handleChartInteraction = (state: any) => {
@@ -190,6 +221,7 @@ export default function UVDetailView() {
         onPointerDown={handlePointerDownDial}
         onPointerUp={handlePointerUpDial}
         onPointerLeave={handlePointerUpDial}
+        onClick={handleDialClick}
         onContextMenu={(e) => e.preventDefault()}
       >
         <svg width="340" height="340" viewBox="0 0 340 340">
@@ -248,6 +280,57 @@ export default function UVDetailView() {
           <span className="text-muted font-medium" style={{ fontSize: '16px', marginTop: '4px', opacity: isPeeking || isScrubbing ? 0 : 1, transition: 'opacity 0.3s' }}>
             Aktuellt UV
           </span>
+        </div>
+      </div>
+
+      {/* Expandable Tidslinje och Rekommendationer */}
+      <div style={{ 
+        maxHeight: expanded ? '600px' : '0px', 
+        opacity: expanded ? 1 : 0, 
+        overflow: 'hidden', 
+        transition: 'all 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+        padding: expanded ? '0 16px' : '0 16px'
+      }}>
+        <div className="surface-card flex-col" style={{ marginBottom: '16px', marginTop: '20px' }}>
+          <div className="section-header">UV Tidslinje Idag</div>
+          <div className="list-item flex-between">
+            <span className="text-muted">Solen stiger (UV &gt; 0)</span>
+            <span className="font-semibold">{times.start || '-'}</span>
+          </div>
+          {times.moderate && (
+            <div className="list-item flex-between">
+              <span className="text-muted">Måttlig UV (Skydd rekommenderas)</span>
+              <span className="font-semibold">{times.moderate}</span>
+            </div>
+          )}
+          <div className="list-item flex-between" style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+            <span className="font-semibold" style={{ color: '#ffffff' }}>Dagens Max ({maxUv})</span>
+            <span className="font-semibold" style={{ color: '#ffffff' }}>{times.peak}</span>
+          </div>
+          {times.low && (
+            <div className="list-item flex-between">
+              <span className="text-muted">Återgår till Låg</span>
+              <span className="font-semibold">{times.low}</span>
+            </div>
+          )}
+          <div className="list-item flex-between" style={{ borderBottom: 'none' }}>
+            <span className="text-muted">Solen går ner</span>
+            <span className="font-semibold">{times.end || '-'}</span>
+          </div>
+        </div>
+
+        {/* Rekommendationer */}
+        <div className="surface-card" style={{ transition: 'all 0.3s ease', marginBottom: '20px' }}>
+          <div className="section-header flex-center" style={{ justifyContent: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+            <SunDim size={18} />
+            REKOMMENDATIONER VID {displayUv.toFixed(1)}
+          </div>
+          <p className="text-muted" style={{ lineHeight: '1.6' }}>
+            {displayUv < 3 && 'Ingen särskild solskyddsåtgärd behövs. Det är säkert att vistas utomhus.'}
+            {displayUv >= 3 && displayUv < 6 && 'Använd solskyddsfaktor (SPF 30+) om du vistas utomhus. Solglasögon och hatt rekommenderas.'}
+            {displayUv >= 6 && displayUv < 8 && 'Solskydd krävs. Använd hatt, solglasögon och SPF 30+. Undvik solen mitt på dagen.'}
+            {displayUv >= 8 && 'Extrem försiktighet krävs! Oskyddad hud bränns mycket snabbt. Stanna i skuggan.'}
+          </p>
         </div>
       </div>
 
