@@ -27,6 +27,9 @@ export default function ParameterDetailView() {
       humidity: data.hourly.humidity[idx],
       uv: data.hourly.uvIndex[idx],
       precip: data.hourly.precipitation[idx],
+      aqi: data.airQuality?.aqi?.[idx] || 0,
+      pollenBirch: data.airQuality?.birchPollen?.[idx] || 0,
+      pollenGrass: data.airQuality?.grassPollen?.[idx] || 0,
     };
   });
 
@@ -63,6 +66,18 @@ export default function ParameterDetailView() {
     case 'precipitation':
       title = 'Nederbörd (mm)';
       lines = [<Line key="1" type="step" dataKey="precip" stroke="#8e8e93" strokeWidth={3} dot={false} />];
+      break;
+    case 'aqi':
+      title = 'Luftkvalitet (AQI)';
+      lines = [<Line key="1" type="monotone" dataKey="aqi" stroke="#8e8e93" strokeWidth={3} dot={false} />];
+      break;
+    case 'pollen_birch':
+      title = 'Björkpollen (µg/m³)';
+      lines = [<Line key="1" type="monotone" dataKey="pollenBirch" stroke="#8e8e93" strokeWidth={3} dot={false} />];
+      break;
+    case 'pollen_grass':
+      title = 'Gräspollen (µg/m³)';
+      lines = [<Line key="1" type="monotone" dataKey="pollenGrass" stroke="#8e8e93" strokeWidth={3} dot={false} />];
       break;
     default:
       title = 'Detaljer';

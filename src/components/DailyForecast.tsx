@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { WeatherData } from '../types/weather';
 import { getWeatherIcon } from '../utils/weatherCodes';
 
@@ -6,27 +7,60 @@ interface DailyForecastProps {
 }
 
 export default function DailyForecast({ data }: DailyForecastProps) {
-  const days = data.daily.time.map((time, i) => {
-    const date = new Date(time);
-    const dayName = i === 0 ? 'Idag' : new Intl.DateTimeFormat('sv-SE', { weekday: 'short' }).format(date);
-    
-    return {
-      dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-      tempMax: data.daily.tempMax[i],
-      tempMin: data.daily.tempMin[i],
-      weatherCode: data.daily.weatherCode[i],
-      precipProb: data.daily.precipitationProbability[i],
-    };
-  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const todayIndex = data.daily.time.findIndex(t => t.startsWith(todayStr)) || 0;
+  
+  let daysToShow;
+  if (showHistory) {
+    const startIndex = Math.max(0, todayIndex - 7);
+    daysToShow = data.daily.time.slice(startIndex, todayIndex).map((time, i) => {
+      const realIndex = startIndex + i;
+      const date = new Date(time);
+      const dayName = new Intl.DateTimeFormat('sv-SE', { weekday: 'short' }).format(date);
+      
+      return {
+        dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        tempMax: data.daily.tempMax[realIndex],
+        tempMin: data.daily.tempMin[realIndex],
+        weatherCode: data.daily.weatherCode[realIndex],
+        precipProb: data.daily.precipitationProbability[realIndex],
+      };
+    }).reverse();
+  } else {
+    daysToShow = data.daily.time.slice(todayIndex, todayIndex + 14).map((time, i) => {
+      const realIndex = todayIndex + i;
+      const date = new Date(time);
+      const dayName = i === 0 ? 'Idag' : new Intl.DateTimeFormat('sv-SE', { weekday: 'short' }).format(date);
+      
+      return {
+        dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        tempMax: data.daily.tempMax[realIndex],
+        tempMin: data.daily.tempMin[realIndex],
+        weatherCode: data.daily.weatherCode[realIndex],
+        precipProb: data.daily.precipitationProbability[realIndex],
+      };
+    });
+  }
 
   return (
     <div className="surface-card" style={{ padding: '16px 24px' }}>
-      <div className="section-header" style={{ marginTop: '8px' }}>10-dygnsprognos</div>
+      <div className="flex-between" style={{ marginTop: '8px', marginBottom: '16px' }}>
+        <div className="section-header" style={{ margin: 0 }}>{showHistory ? 'Senaste 7 dagarna' : '14-dygnsprognos'}</div>
+        <button 
+          onClick={() => setShowHistory(!showHistory)}
+          className="text-xs text-muted"
+          style={{ textDecoration: 'underline' }}
+        >
+          {showHistory ? 'Visa prognos' : 'Visa historik'}
+        </button>
+      </div>
       <div className="flex-col">
-        {days.map((day, i) => {
+        {daysToShow.map((day, i) => {
           const Icon = getWeatherIcon(day.weatherCode);
           return (
-            <div key={i} className="list-item flex-between">
+            <div key={i} className="list-item flex-between" style={{ padding: '12px 0' }}>
               <span className="text-md font-medium" style={{ width: '70px' }}>{day.dayName}</span>
               <div className="flex-center" style={{ width: '40px' }}>
                 <Icon size={20} strokeWidth={1.5} className="text-muted" />
