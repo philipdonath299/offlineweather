@@ -37,11 +37,15 @@ function App() {
           <Menu size={24} className="text-muted" strokeWidth={1.5} />
         </button>
         
-        {isOfflineData && (
-          <span className="text-xs text-muted" style={{ fontWeight: 500, letterSpacing: '0.5px' }}>OFFLINE LÄGE</span>
-        )}
-        
         <div className="flex-center" style={{ gap: '12px' }}>
+          {isOfflineData && (
+            <span className="text-xs text-muted" style={{ fontWeight: 500, letterSpacing: '0.5px' }}>OFFLINE LÄGE</span>
+          )}
+          {data?.lastUpdated && (
+            <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Uppdaterad {new Date(data.lastUpdated).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
           <button className="btn-icon" onClick={refresh} disabled={loading}>
             <RefreshCw size={20} strokeWidth={1.5} className={`text-muted ${loading ? 'spin' : ''}`} />
           </button>
