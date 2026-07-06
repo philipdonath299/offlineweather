@@ -9,8 +9,10 @@ export async function fetchAirQuality(lat: number, lon: number): Promise<AirQual
     const params = new URLSearchParams({
       latitude: lat.toString(),
       longitude: lon.toString(),
-      hourly: 'pm10,pm2_5,european_aqi',
+      hourly: 'pm10,pm2_5,european_aqi,carbon_monoxide,nitrogen_dioxide,ozone,alder_pollen,birch_pollen,grass_pollen',
       timezone: 'auto',
+      past_days: '7',
+      forecast_days: '14',
     });
     const res = await fetch(`${AQI_API_BASE}?${params.toString()}`);
     if (!res.ok) return undefined;
@@ -19,6 +21,12 @@ export async function fetchAirQuality(lat: number, lon: number): Promise<AirQual
       aqi: data.hourly.european_aqi,
       pm10: data.hourly.pm10,
       pm2_5: data.hourly.pm2_5,
+      carbonMonoxide: data.hourly.carbon_monoxide,
+      nitrogenDioxide: data.hourly.nitrogen_dioxide,
+      ozone: data.hourly.ozone,
+      alderPollen: data.hourly.alder_pollen,
+      birchPollen: data.hourly.birch_pollen,
+      grassPollen: data.hourly.grass_pollen,
       time: data.hourly.time,
     };
   } catch (e) {
@@ -32,11 +40,11 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
     latitude: lat.toString(),
     longitude: lon.toString(),
     current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-    hourly: 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,pressure_msl,surface_pressure,cloud_cover,visibility,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max',
+    hourly: 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,pressure_msl,surface_pressure,cloud_cover,visibility,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,snow_depth,soil_temperature_0cm',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,daylight_duration,sunshine_duration',
     timezone: 'auto',
-    past_days: '1', // Hämta 1 dags historik
-    forecast_days: '10', // Upp till 10 dagars prognos
+    past_days: '7', // Hämta 7 dagars historik
+    forecast_days: '14', // Upp till 14 dagars prognos
   });
 
   const [weatherRes, aqiData] = await Promise.all([
@@ -88,6 +96,8 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       cloudCover: data.hourly.cloud_cover,
       visibility: data.hourly.visibility,
       weatherCode: data.hourly.weather_code,
+      snowDepth: data.hourly.snow_depth,
+      soilTemperature: data.hourly.soil_temperature_0cm,
     },
     daily: {
       time: data.daily.time,
@@ -100,10 +110,21 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       sunrise: data.daily.sunrise,
       sunset: data.daily.sunset,
       weatherCode: data.daily.weather_code,
+      daylightDuration: data.daily.daylight_duration,
+      sunshineDuration: data.daily.sunshine_duration,
     },
     airQuality: aqiData,
     lastUpdated: Date.now(),
   };
+}
+
+interface OpenMeteoLocationResult {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  country: string;
+  admin1?: string;
 }
 
 export async function searchLocation(query: string): Promise<LocationSearchResult[]> {
@@ -121,7 +142,7 @@ export async function searchLocation(query: string): Promise<LocationSearchResul
   const data = await response.json();
   if (!data.results) return [];
   
-  return data.results.map((r: any) => ({
+  return data.results.map((r: OpenMeteoLocationResult) => ({
     id: r.id,
     name: r.name,
     latitude: r.latitude,

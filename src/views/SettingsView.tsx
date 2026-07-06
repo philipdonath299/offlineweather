@@ -21,6 +21,23 @@ export default function SettingsView() {
               </select>
             </div>
           </div>
+          <div className="list-item flex-between">
+            <span className="font-medium text-md">High Contrast</span>
+            <button 
+              onClick={() => updateSettings({ highContrast: !settings.highContrast })}
+              style={{ 
+                width: '50px', height: '28px', borderRadius: '14px', 
+                background: settings.highContrast ? '#4CAF50' : 'var(--card-border)',
+                position: 'relative', transition: 'background 0.3s'
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: '2px', left: settings.highContrast ? '24px' : '2px',
+                width: '24px', height: '24px', background: '#fff', borderRadius: '50%',
+                transition: 'left 0.3s'
+              }} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -52,6 +69,32 @@ export default function SettingsView() {
                 <option value="ms">m/s</option>
                 <option value="kmh">km/h</option>
                 <option value="mph">mph</option>
+              </select>
+            </div>
+          </div>
+          <div className="list-item flex-between">
+            <span className="font-medium text-md">Precipitation</span>
+            <div className="input-container" style={{ padding: '8px 12px' }}>
+              <select 
+                value={settings.precipitationUnit} 
+                onChange={(e) => updateSettings({ precipitationUnit: e.target.value as any })}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', outline: 'none' }}
+              >
+                <option value="mm">mm</option>
+                <option value="inch">in</option>
+              </select>
+            </div>
+          </div>
+          <div className="list-item flex-between">
+            <span className="font-medium text-md">Time Format</span>
+            <div className="input-container" style={{ padding: '8px 12px' }}>
+              <select 
+                value={settings.timeFormat} 
+                onChange={(e) => updateSettings({ timeFormat: e.target.value as any })}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', outline: 'none' }}
+              >
+                <option value="24h">24h</option>
+                <option value="12h">12h</option>
               </select>
             </div>
           </div>

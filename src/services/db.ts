@@ -14,13 +14,22 @@ interface WeatherDB extends DBSchema {
     key: string;
     value: LocationSearchResult[];
   };
+  recent_searches: {
+    key: string;
+    value: LocationSearchResult[];
+  };
 }
 
-const dbPromise = openDB<WeatherDB>('weather-app-db', 1, {
-  upgrade(db) {
-    db.createObjectStore('weather');
-    db.createObjectStore('settings');
-    db.createObjectStore('locations');
+const dbPromise = openDB<WeatherDB>('weather-app-db', 2, {
+  upgrade(db, oldVersion) {
+    if (oldVersion < 1) {
+      db.createObjectStore('weather');
+      db.createObjectStore('settings');
+      db.createObjectStore('locations');
+    }
+    if (oldVersion < 2) {
+      db.createObjectStore('recent_searches');
+    }
   },
 });
 
@@ -45,5 +54,12 @@ export const db = {
   },
   async saveLocations(locations: LocationSearchResult[]) {
     await (await dbPromise).put('locations', locations, 'saved-locations');
+  },
+  async getRecentSearches(): Promise<LocationSearchResult[]> {
+    const searches = await (await dbPromise).get('recent_searches', 'history');
+    return searches || [];
+  },
+  async saveRecentSearches(searches: LocationSearchResult[]) {
+    await (await dbPromise).put('recent_searches', searches, 'history');
   }
 };

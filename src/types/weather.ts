@@ -2,6 +2,12 @@ export interface AirQualityData {
   aqi: number[];
   pm10: number[];
   pm2_5: number[];
+  carbonMonoxide?: number[];
+  nitrogenDioxide?: number[];
+  ozone?: number[];
+  alderPollen?: number[];
+  birchPollen?: number[];
+  grassPollen?: number[];
   time: string[];
 }
 
@@ -38,6 +44,8 @@ export interface WeatherData {
     cloudCover: number[];
     visibility: number[];
     weatherCode: number[];
+    snowDepth?: number[];
+    soilTemperature?: number[];
   };
   daily: {
     time: string[];
@@ -50,6 +58,8 @@ export interface WeatherData {
     sunrise: string[];
     sunset: string[];
     weatherCode: number[];
+    daylightDuration?: number[];
+    sunshineDuration?: number[];
   };
   airQuality?: AirQualityData;
   location: {
@@ -66,6 +76,7 @@ export interface Settings {
   precipitationUnit: 'mm' | 'inch';
   timeFormat: '24h' | '12h';
   theme: 'dark'; // Låst till mörkt tema
+  highContrast: boolean;
   autoLocation: boolean;
   autoUpdate: boolean;
 }
@@ -76,6 +87,7 @@ export const defaultSettings: Settings = {
   precipitationUnit: 'mm',
   timeFormat: '24h',
   theme: 'dark',
+  highContrast: false,
   autoLocation: true,
   autoUpdate: true,
 };

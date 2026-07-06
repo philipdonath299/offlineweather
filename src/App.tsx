@@ -1,20 +1,21 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Home, CalendarDays, Settings as SettingsIcon, Menu, RefreshCw, BarChart2 } from 'lucide-react';
 import { useWeatherContext } from './context/WeatherContext';
 import LocationSearch from './components/LocationSearch';
+import Skeleton from './components/Skeleton';
 import { LocationSearchResult } from './types/weather';
 
-// Vyer
-import HomeView from './views/HomeView';
-import ForecastView from './views/ForecastView';
-import DetailsView from './views/DetailsView';
-import SettingsView from './views/SettingsView';
-import ParameterDetailView from './views/ParameterDetailView';
-import UVDetailView from './views/UVDetailView';
+// Vyer (Lazy loaded)
+const HomeView = lazy(() => import('./views/HomeView'));
+const ForecastView = lazy(() => import('./views/ForecastView'));
+const DetailsView = lazy(() => import('./views/DetailsView'));
+const SettingsView = lazy(() => import('./views/SettingsView'));
+const ParameterDetailView = lazy(() => import('./views/ParameterDetailView'));
+const UVDetailView = lazy(() => import('./views/UVDetailView'));
 
 function App() {
-  const { data, loading, error, isOfflineData, refresh, setLocation } = useWeatherContext();
+  const { data, loading, error, isOfflineData, refresh, setLocation, settings } = useWeatherContext();
   const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,7 +34,7 @@ function App() {
   ];
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${settings.highContrast ? 'high-contrast' : ''}`}>
       <header className="flex-between">
         <button className="btn-icon" onClick={() => setShowSearch(!showSearch)}>
           <Menu size={24} className="text-muted" strokeWidth={1.5} />
@@ -63,21 +64,37 @@ function App() {
       )}
 
       {loading && !data && (
-        <div className="flex-center flex-col text-muted" style={{ height: '40vh', gap: '16px' }}>
-          <RefreshCw size={28} strokeWidth={1.5} className="spin" />
-        </div>
+        <main style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div className="surface-card flex-center flex-col" style={{ gap: '16px', padding: '32px' }}>
+            <Skeleton width="120px" height="24px" />
+            <Skeleton width="80px" height="64px" borderRadius="16px" />
+            <Skeleton width="160px" height="20px" />
+          </div>
+          <div className="surface-card">
+            <Skeleton width="100px" height="20px" style={{ marginBottom: '16px' }} />
+            <div style={{ display: 'flex', gap: '12px', overflow: 'hidden' }}>
+               <Skeleton width="60px" height="100px" borderRadius="24px" />
+               <Skeleton width="60px" height="100px" borderRadius="24px" />
+               <Skeleton width="60px" height="100px" borderRadius="24px" />
+               <Skeleton width="60px" height="100px" borderRadius="24px" />
+               <Skeleton width="60px" height="100px" borderRadius="24px" />
+            </div>
+          </div>
+        </main>
       )}
 
       {data && (
         <main>
-          <Routes>
-            <Route path="/" element={<HomeView />} />
-            <Route path="/forecast" element={<ForecastView />} />
-            <Route path="/details" element={<DetailsView />} />
-            <Route path="/settings" element={<SettingsView />} />
-            <Route path="/uv" element={<UVDetailView />} />
-            <Route path="/param/:type" element={<ParameterDetailView />} />
-          </Routes>
+          <Suspense fallback={<div className="flex-center text-muted" style={{ height: '40vh' }}><RefreshCw size={28} strokeWidth={1.5} className="spin" /></div>}>
+            <Routes>
+              <Route path="/" element={<HomeView />} />
+              <Route path="/forecast" element={<ForecastView />} />
+              <Route path="/details" element={<DetailsView />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route path="/uv" element={<UVDetailView />} />
+              <Route path="/param/:type" element={<ParameterDetailView />} />
+            </Routes>
+          </Suspense>
         </main>
       )}
 

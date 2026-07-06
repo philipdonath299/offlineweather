@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { WeatherData, LocationSearchResult, Settings, defaultSettings } from '../types/weather';
 import { fetchWeather } from '../services/api';
 import { db } from '../services/db';
@@ -109,23 +109,37 @@ export function WeatherProvider({ children }: { children: ReactNode }) {
     }
   }, [location, loadWeather]);
 
-  const setLocation = (loc: LocationSearchResult) => {
+  const handleSetLocation = useCallback((loc: LocationSearchResult) => {
     setLocationState(loc);
     localStorage.setItem('lastLocation', JSON.stringify(loc));
-  };
+  }, []);
 
-  const updateSettings = async (newSettings: Partial<Settings>) => {
-    const updated = { ...settings, ...newSettings };
-    setSettings(updated);
-    await db.saveSettings(updated);
-  };
+  const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      db.saveSettings(updated);
+      return updated;
+    });
+  }, []);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     if (location) loadWeather(location, true);
-  };
+  }, [location, loadWeather]);
+
+  const contextValue = useMemo(() => ({
+    data, 
+    location, 
+    settings, 
+    loading, 
+    error, 
+    isOfflineData, 
+    setLocation: handleSetLocation, 
+    updateSettings: handleUpdateSettings, 
+    refresh
+  }), [data, location, settings, loading, error, isOfflineData, handleSetLocation, handleUpdateSettings, refresh]);
 
   return (
-    <WeatherContext.Provider value={{ data, location, settings, loading, error, isOfflineData, setLocation, updateSettings, refresh }}>
+    <WeatherContext.Provider value={contextValue}>
       {children}
     </WeatherContext.Provider>
   );
