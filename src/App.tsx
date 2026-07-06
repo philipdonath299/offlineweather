@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Home, CalendarDays, Settings as SettingsIcon, Menu, RefreshCw, BarChart2 } from 'lucide-react';
 import { useWeatherContext } from './context/WeatherContext';
 import LocationSearch from './components/LocationSearch';
+import { LocationSearchResult } from './types/weather';
 
 // Vyer
 import HomeView from './views/HomeView';
@@ -13,12 +14,13 @@ import ParameterDetailView from './views/ParameterDetailView';
 import UVDetailView from './views/UVDetailView';
 
 function App() {
-  const { data, loading, error, isOfflineData, refresh } = useWeatherContext();
+  const { data, loading, error, isOfflineData, refresh, setLocation } = useWeatherContext();
   const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLocationSelect = () => {
+  const handleLocationSelect = (loc: LocationSearchResult) => {
+    setLocation(loc);
     setShowSearch(false);
     navigate('/');
   };
