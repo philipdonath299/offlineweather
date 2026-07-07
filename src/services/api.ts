@@ -58,6 +58,11 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
   
   const data = await weatherRes.json();
   
+  const currentTimeStr = data.current?.time || new Date().toISOString();
+  const currentHourPrefix = currentTimeStr.substring(0, 13);
+  let currentIndex = data.hourly.time.findIndex((t: string) => t.startsWith(currentHourPrefix));
+  if (currentIndex === -1) currentIndex = 0;
+  
   return {
     location: {
       name,
@@ -72,8 +77,8 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       windGusts: data.current.wind_gusts_10m,
       windDirection: data.current.wind_direction_10m,
       pressure: data.current.surface_pressure,
-      uvIndex: data.hourly.uv_index[0] || 0,
-      visibility: data.hourly.visibility[0] || 10000,
+      uvIndex: data.hourly.uv_index[currentIndex] || 0,
+      visibility: data.hourly.visibility[currentIndex] || 10000,
       dewPoint: data.current.temperature_2m - ((100 - data.current.relative_humidity_2m) / 5), // Approx
       cloudCover: data.current.cloud_cover,
       precipitation: data.current.precipitation,
