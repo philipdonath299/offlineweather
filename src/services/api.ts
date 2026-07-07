@@ -81,7 +81,7 @@ export async function fetchWeather(lat: number, lon: number, name: string): Prom
       visibility: data.hourly.visibility[currentIndex] || 10000,
       dewPoint: data.current.temperature_2m - ((100 - data.current.relative_humidity_2m) / 5), // Approx
       cloudCover: data.current.cloud_cover,
-      precipitation: data.current.precipitation,
+      precipitation: data.hourly.precipitation[currentIndex] || 0,
       isDay: data.current.is_day === 1,
       weatherCode: data.current.weather_code,
     },
