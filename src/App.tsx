@@ -1,4 +1,4 @@
-import { useState, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Home, CalendarDays, Settings as SettingsIcon, RefreshCw, BarChart2 } from 'lucide-react';
 import { useWeatherContext } from './context/WeatherContext';
