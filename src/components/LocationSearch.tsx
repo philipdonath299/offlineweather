@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, MapPin, X } from 'lucide-react';
-import { searchLocation } from '../services/api';
+import { searchLocation, reverseGeocode } from '../services/api';
 import { LocationSearchResult } from '../types/weather';
 import { db } from '../services/db';
 import { useWeatherContext } from '../context/WeatherContext';
@@ -53,11 +53,13 @@ export default function LocationSearch({ onSelectLocation }: LocationSearchProps
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          const { latitude, longitude } = position.coords;
+          const cityName = await reverseGeocode(latitude, longitude);
           const loc: LocationSearchResult = {
             id: 0,
-            name: 'Nuvarande plats',
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+            name: cityName,
+            latitude,
+            longitude,
             country: '',
           };
           onSelectLocation(loc);
