@@ -10,9 +10,11 @@ interface WeatherContextType {
   loading: boolean;
   error: string | null;
   isOfflineData: boolean;
+  showSearch: boolean;
   setLocation: (loc: LocationSearchResult) => void;
   updateSettings: (newSettings: Partial<Settings>) => void;
   refresh: () => void;
+  setShowSearch: (show: boolean) => void;
 }
 
 const WeatherContext = createContext<WeatherContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ export function WeatherProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isOfflineData, setIsOfflineData] = useState<boolean>(false);
+  const [showSearch, setShowSearch] = useState<boolean>(false);
 
   // Ladda initialt state från databas/localStorage
   useEffect(() => {
@@ -133,10 +136,12 @@ export function WeatherProvider({ children }: { children: ReactNode }) {
     loading, 
     error, 
     isOfflineData, 
+    showSearch,
     setLocation: handleSetLocation, 
     updateSettings: handleUpdateSettings, 
-    refresh
-  }), [data, location, settings, loading, error, isOfflineData, handleSetLocation, handleUpdateSettings, refresh]);
+    refresh,
+    setShowSearch
+  }), [data, location, settings, loading, error, isOfflineData, showSearch, handleSetLocation, handleUpdateSettings, refresh]);
 
   return (
     <WeatherContext.Provider value={contextValue}>

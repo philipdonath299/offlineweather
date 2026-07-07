@@ -1,11 +1,13 @@
 import { WeatherData } from '../types/weather';
 import { getWeatherDescription } from '../utils/weatherCodes';
+import { useWeatherContext } from '../context/WeatherContext';
 
 interface CurrentWeatherProps {
   data: WeatherData;
 }
 
 export default function CurrentWeather({ data }: CurrentWeatherProps) {
+  const { setShowSearch } = useWeatherContext();
   const description = getWeatherDescription(data.current.weatherCode);
 
   // Hitta index för idag (ignorerar historik)
@@ -17,7 +19,13 @@ export default function CurrentWeather({ data }: CurrentWeatherProps) {
 
   return (
     <div className="flex-col flex-center" style={{ margin: '40px 0 20px 0', gap: '12px' }}>
-      <h1 className="text-3xl font-bold">{data.location.name}</h1>
+      <h1 
+        className="text-3xl font-bold" 
+        style={{ cursor: 'pointer' }}
+        onClick={() => setShowSearch(true)}
+      >
+        {data.location.name}
+      </h1>
       <p className="text-md text-muted font-medium" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {Math.round(data.current.temp)}° · {description}
       </p>

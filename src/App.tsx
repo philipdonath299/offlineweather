@@ -1,6 +1,6 @@
 import { useState, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Home, CalendarDays, Settings as SettingsIcon, Menu, RefreshCw, BarChart2 } from 'lucide-react';
+import { Home, CalendarDays, Settings as SettingsIcon, RefreshCw, BarChart2 } from 'lucide-react';
 import { useWeatherContext } from './context/WeatherContext';
 import LocationSearch from './components/LocationSearch';
 import Skeleton from './components/Skeleton';
@@ -15,8 +15,7 @@ const ParameterDetailView = lazy(() => import('./views/ParameterDetailView'));
 const UVDetailView = lazy(() => import('./views/UVDetailView'));
 
 function App() {
-  const { data, loading, error, isOfflineData, refresh, setLocation, settings } = useWeatherContext();
-  const [showSearch, setShowSearch] = useState(false);
+  const { data, loading, error, isOfflineData, refresh, setLocation, settings, showSearch, setShowSearch } = useWeatherContext();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -36,10 +35,7 @@ function App() {
   return (
     <div className={`app-container ${settings.highContrast ? 'high-contrast' : ''}`}>
       <header className="flex-between">
-        <button className="btn-icon" onClick={() => setShowSearch(!showSearch)}>
-          <Menu size={24} className="text-muted" strokeWidth={1.5} />
-        </button>
-        
+        <div /> {/* Placeholder for left side to keep flex-between alignment */}
         <div className="flex-center" style={{ gap: '12px' }}>
           {isOfflineData && (
             <span className="text-xs text-muted" style={{ fontWeight: 500, letterSpacing: '0.5px' }}>OFFLINE LÄGE</span>
